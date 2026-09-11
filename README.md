@@ -120,14 +120,14 @@ A spec with a custom `shape` needs its face scale before `computeFrame` can plac
 
 ## Example app
 
-`example/` is an Expo app with a single-screen Studio: colour, cut, mood, eye colour, tuning sliders for the parameters the selected cut exposes, loop scrubbing with play/pause/restart, size and a morph toggle. It also accepts deep-link parameters so it can be driven from a script:
+`example/` is an Expo app with a single-screen Studio: colour, cut, mood, eye colour and tuning sliders for the parameters the selected cut exposes. It also accepts deep-link parameters so it can be driven from a script:
 
 ```bash
 cd example && npx expo start --ios
-xcrun simctl openurl booted "exp://<host>:8081/--/?mood=failed&still=0.6&cut=burst&lobes=9"
+xcrun simctl openurl booted "exp://<host>:8081/--/?mood=failed&cut=burst&lobes=9"
 ```
 
-Parameters: `color`, `cut`, `mood`, `eyes`, `paused`, `still` (0..1), `morph`, `size`, `theme`, `restart`, and any tunable parameter (`n`, `ax`, `rot`, `lobes`, `depth`, `sharp`, `sides`, `round`), which applies when the cut exposes it.
+Parameters: `color`, `cut`, `mood`, `eyes`, `theme`, and any tunable parameter (`n`, `ax`, `rot`, `lobes`, `depth`, `sharp`, `sides`, `round`), which applies when the cut exposes it.
 
 ## Development
 

@@ -14,12 +14,10 @@ import {
   PALETTE_KEYS,
   SHAPE_DEFAULTS,
   isPaletteKey,
-  loopLength,
   randomSeed,
   type Cut,
   type CutTune,
   type Mood,
-  type MoodstoneHandle,
   type PaletteKey,
   type Seed,
   type Tune,
@@ -100,11 +98,6 @@ function Studio() {
   const [tune, setTune] = useState<Tune | null>(null);
   const [mood, setMood] = useState<Mood>('idle');
   const [eyes, setEyes] = useState<'white' | 'black'>('white');
-  const [paused, setPaused] = useState(false);
-  const [phase, setPhase] = useState(0);
-  const [size, setSize] = useState(maxStage);
-  const [morph, setMorph] = useState(460);
-  const avatar = useRef<MoodstoneHandle>(null);
   const scroller = useRef<ScrollView>(null);
 
   const activeColor = PALETTE[color];
@@ -114,7 +107,6 @@ function Studio() {
   // `cut` is runtime state, so TypeScript can't pair it with `tune`. The sliders only write keys from
   // CUT_TUNES[cut], and the library ignores any others.
   const silhouette = { cut, tune: tune ?? undefined } as CutTune;
-  const moodInfo = MOODS.find((m) => m.key === mood)!;
   const dark = theme === 'dark';
   const c = dark ? DARK : LIGHT;
 
@@ -129,18 +121,10 @@ function Studio() {
     if (params.cut && CUT_SET.has(params.cut)) chooseCut(params.cut as Cut);
     if (params.mood && MOOD_SET.has(params.mood)) setMood(params.mood as Mood);
     if (params.eyes === 'white' || params.eyes === 'black') setEyes(params.eyes);
-    if (params.paused) setPaused(params.paused === '1');
-    if (params.still) {
-      setPaused(true);
-      setPhase(Number(params.still) || 0);
-    }
-    if (params.morph) setMorph(Number(params.morph) || 0);
-    if (params.size) setSize(Math.max(48, Math.min(maxStage, Number(params.size) || maxStage)));
     if (params.theme === 'light' || params.theme === 'dark') setTheme(params.theme);
     const tweak: Tune = {};
     for (const k of TUNE_KEYS) if (params[k] !== undefined) tweak[k] = Number(params[k]);
     if (Object.keys(tweak).length) setTune(tweak);
-    if (params.restart) avatar.current?.restart();
     if (params.scroll === 'end') setTimeout(() => scroller.current?.scrollToEnd({ animated: false }), 150);
     if (params.scroll === 'top') setTimeout(() => scroller.current?.scrollTo({ y: 0, animated: false }), 150);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -174,22 +158,8 @@ function Studio() {
 
       {/* stage */}
       <View style={[styles.stage, { height: maxStage + 16, backgroundColor: c.panel }]}>
-        <Moodstone
-          ref={avatar}
-          seed={seed}
-          color={color}
-          {...silhouette}
-          mood={mood}
-          eyeColor={eyes}
-          size={size}
-          paused={paused}
-          phase={phase}
-          morphDuration={morph}
-        />
+        <Moodstone seed={seed} color={color} {...silhouette} mood={mood} eyeColor={eyes} size={maxStage} />
       </View>
-      <Text style={[styles.sub, { color: c.muted }]}>
-        {moodInfo.label} · {paused ? 'paused' : 'looping'}
-      </Text>
 
       {/* controls */}
       <ScrollView ref={scroller} contentContainerStyle={styles.controls} showsVerticalScrollIndicator={false}>
@@ -240,64 +210,12 @@ function Studio() {
             </View>
           ))}
         </Section>
-        <Section label="Loop" c={c} column>
-          <View style={styles.knob}>
-            <Pressable onPress={() => setPaused((p) => !p)} style={[styles.iconButton, { backgroundColor: c.chip }]}>
-              <Text style={[styles.icon, { color: c.text }]}>{paused ? '▶' : '❚❚'}</Text>
+        <Section label="Look" c={c}>
+          {(['white', 'black'] as const).map((e) => (
+            <Pressable key={e} onPress={() => setEyes(e)} style={[styles.chip, { backgroundColor: c.chip }, ring(e === eyes)]}>
+              <Text style={[styles.chipText, { color: c.text }]}>{e === 'white' ? 'White eyes' : 'Black eyes'}</Text>
             </Pressable>
-            <Pressable
-              onPress={() => {
-                setPhase(0);
-                avatar.current?.restart();
-              }}
-              style={[styles.iconButton, { backgroundColor: c.chip }]}
-            >
-              <Text style={[styles.icon, { color: c.text }]}>↺</Text>
-            </Pressable>
-            <Slider
-              style={[styles.slider, { marginLeft: 6 }]}
-              minimumValue={0}
-              maximumValue={1}
-              step={0.001}
-              value={phase}
-              onValueChange={(v) => {
-                setPaused(true);
-                setPhase(v);
-              }}
-              minimumTrackTintColor={activeColor}
-              maximumTrackTintColor={c.track}
-              thumbTintColor="#ffffff"
-            />
-            <Text style={[styles.knobValue, { color: c.text }]}>{(phase * loopLength(mood)).toFixed(1)}s</Text>
-          </View>
-          <Text style={[styles.help, { color: c.muted }]}>Drag to scrub through the {loopLength(mood)}s loop. Scrubbing pauses; play resumes from there.</Text>
-        </Section>
-        <Section label="Look" c={c} column>
-          <View style={styles.wrapRow}>
-            {(['white', 'black'] as const).map((e) => (
-              <Pressable key={e} onPress={() => setEyes(e)} style={[styles.chip, { backgroundColor: c.chip }, ring(e === eyes)]}>
-                <Text style={[styles.chipText, { color: c.text }]}>{e === 'white' ? 'White eyes' : 'Black eyes'}</Text>
-              </Pressable>
-            ))}
-            <Pressable onPress={() => setMorph((m) => (m ? 0 : 460))} style={[styles.chip, { backgroundColor: c.chip }, ring(morph > 0)]}>
-              <Text style={[styles.chipText, { color: c.text }]}>{morph > 0 ? 'Morph on' : 'Morph off'}</Text>
-            </Pressable>
-          </View>
-          <View style={styles.knob}>
-            <Text style={[styles.knobLabel, { color: c.muted }]}>Size</Text>
-            <Slider
-              style={styles.slider}
-              minimumValue={48}
-              maximumValue={maxStage}
-              step={1}
-              value={size}
-              onValueChange={setSize}
-              minimumTrackTintColor={activeColor}
-              maximumTrackTintColor={c.track}
-              thumbTintColor="#ffffff"
-            />
-            <Text style={[styles.knobValue, { color: c.text }]}>{Math.round(size)}</Text>
-          </View>
+          ))}
         </Section>
       </ScrollView>
     </SafeAreaView>
@@ -339,9 +257,8 @@ const styles = StyleSheet.create({
   icon: { fontSize: 13, fontWeight: '700' },
   pill: { height: 32, borderRadius: 9, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
   pillText: { color: '#0b0e10', fontWeight: '700', fontSize: 13 },
-  stage: { borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginTop: 6 },
-  sub: { fontSize: 11, textAlign: 'center', marginTop: 8, marginBottom: 6 },
-  controls: { paddingTop: 6, paddingBottom: 40, gap: 22 },
+  stage: { borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginTop: 6, marginBottom: 8 },
+  controls: { paddingTop: 14, paddingBottom: 40, gap: 22 },
   section: { gap: 10 },
   sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 24 },
   sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' },
@@ -352,7 +269,6 @@ const styles = StyleSheet.create({
   knobLabel: { width: 84, fontSize: 13 },
   slider: { flex: 1, height: 34 },
   knobValue: { width: 44, fontSize: 13, textAlign: 'right', fontVariant: ['tabular-nums'] },
-  help: { fontSize: 12, lineHeight: 16 },
   chip: { height: 36, borderRadius: 10, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
   chipSmall: { height: 28, paddingHorizontal: 10 },
   chipText: { fontSize: 13, fontWeight: '600' },
