@@ -105,7 +105,7 @@ The animated SVG uses SMIL, samples every attribute from `computeFrame`, and loo
 
 ## Performance notes
 
-Each `Moodstone` is its own Skia canvas with its own clock. A handful of animated avatars on a screen is cheap. For long lists, render rows with `animated={false}` and animate only the avatar the user is looking at. The example's Wall runs 45 animated avatars at once on an iPhone simulator without dropping frames, but treat that as the upper end.
+Each `Moodstone` is its own Skia canvas with its own clock. A handful of animated avatars on a screen is cheap. For long lists, render rows with `animated={false}` and animate only the avatar the user is looking at.
 
 ## Core API
 
