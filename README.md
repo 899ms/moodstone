@@ -17,7 +17,7 @@ import { Moodstone } from 'moodstone';
 - **UI-thread animation.** One pure function, `computeFrame(spec, t)`, describes every frame. Skia reads it through Reanimated derived values, so the JS thread stays idle. Pause, restart, or offset the loop.
 - **Exports.** PNG at any size through a ref, a still SVG, and a self-contained animated SVG of the whole loop.
 - **Still frames** for lists (`animated={false}`).
-- **Platform-agnostic core.** `moodstone/core` has no React Native imports. The same maths drives the HTML canvas renderer in the dev harness.
+- **Platform-agnostic core.** `moodstone/core` has no React Native imports. The same maths drives the Skia renderer and the SVG exports.
 
 ## Install
 
@@ -131,8 +131,7 @@ Parameters: `color`, `cut`, `mood`, `eyes`, `paused`, `still` (0..1), `morph`, `
 
 ```bash
 npm run typecheck
-npm run harness:build && python3 -m http.server 8765 -d dev   # canvas harness at http://localhost:8765
-npm run build                               # bob → lib/
+npm run build   # bob → lib/
 ```
 
 ## Credits

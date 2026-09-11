@@ -15,9 +15,7 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "noEmit": true,
-    "types": [
-      "bun"
-    ],
+    "types": [],
     "paths": {
       "moodstone": [
         "./src/index"
@@ -31,8 +29,7 @@
     ]
   },
   "include": [
-    "src",
-    "dev"
+    "src"
   ],
   "exclude": [
     "node_modules",
