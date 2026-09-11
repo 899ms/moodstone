@@ -19,13 +19,11 @@
   },
   "files": [
     "src",
-    "lib",
-    "!**/*.test.ts"
+    "lib"
   ],
   "sideEffects": false,
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "bun test",
     "build": "bob build",
     "prepack": "bob build",
     "harness:build": "bun build dev/harness.ts --outdir dev/dist --target browser",

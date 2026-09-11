@@ -7,7 +7,7 @@ import { celebrationColor, litShade } from './color';
 /* ------------------------------------------------------------------
    Everything below is a pure function of (spec, time). It runs on the
    UI thread as a Reanimated worklet in React Native, on the main thread
-   in a browser, and in Node for tests. No classes, no closures over
+   in a browser, and in Node. No classes, no closures over
    mutable state, only numbers and plain objects.
    ------------------------------------------------------------------ */
 

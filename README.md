@@ -130,7 +130,6 @@ Parameters: `color`, `cut`, `mood`, `eyes`, `paused`, `still` (0..1), `morph`, `
 ## Development
 
 ```bash
-bun test                                    # core invariants + SVG well-formedness (xmllint)
 npm run typecheck
 npm run harness:build && python3 -m http.server 8765 -d dev   # canvas harness at http://localhost:8765
 npm run build                               # bob → lib/
