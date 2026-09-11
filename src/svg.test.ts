@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
-import { computeFrame, identityFromName, CUT_KEYS, MOOD_KEYS } from './core';
+import { computeFrame, CUT_KEYS, DEFAULT_SEED, MOOD_KEYS, PALETTE } from './core';
 import type { AvatarSpec } from './core';
 import { renderAvatarSvg, renderAnimatedAvatarSvg } from './svg';
+
+const base: Omit<AvatarSpec, 'mood'> = { seed: DEFAULT_SEED, color: PALETTE.pine, cut: 'circle', eyeColor: '#FFFFFF' };
 
 const wellFormed = (xml: string) => {
   const r = spawnSync('xmllint', ['--noout', '-'], { input: xml, encoding: 'utf8' });
@@ -11,7 +13,7 @@ const wellFormed = (xml: string) => {
 
 describe('svg export', () => {
   for (const mood of MOOD_KEYS) {
-    const spec: AvatarSpec = { ...identityFromName('Nova'), cut: CUT_KEYS[MOOD_KEYS.indexOf(mood) % CUT_KEYS.length], mood, eyeColor: '#FFFFFF' };
+    const spec: AvatarSpec = { ...base, cut: CUT_KEYS[MOOD_KEYS.indexOf(mood) % CUT_KEYS.length], mood };
     test(`${mood}: static svg is well-formed`, () => {
       const svg = renderAvatarSvg(spec, computeFrame(spec, 1.3), { size: 200, background: '#0e1113' });
       expect(svg.startsWith('<svg')).toBe(true);
@@ -26,9 +28,9 @@ describe('svg export', () => {
     });
   }
   test('failed animated svg carries swirl paths, inactive carries sleep marks', () => {
-    const failed = renderAnimatedAvatarSvg({ ...identityFromName('Nova'), mood: 'failed', eyeColor: '#FFFFFF' });
+    const failed = renderAnimatedAvatarSvg({ ...base, mood: 'failed' });
     expect((failed.match(/attributeName="d"/g) ?? []).length).toBe(2);
-    const asleep = renderAnimatedAvatarSvg({ ...identityFromName('Nova'), mood: 'inactive', eyeColor: '#FFFFFF' });
+    const asleep = renderAnimatedAvatarSvg({ ...base, mood: 'inactive' });
     expect((asleep.match(/attributeName="d"/g) ?? []).length).toBe(3);
   });
 });

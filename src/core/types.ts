@@ -15,7 +15,7 @@ export type Mood =
   | 'invalid'
   | 'inactive';
 
-/** Three base rotations (radians) for the facet planes. Derived from the agent name. */
+/** Three base rotations (radians) for the facet planes. */
 export type Seed = readonly [number, number, number];
 
 /** Everything the renderer needs to know about an avatar, minus time. */

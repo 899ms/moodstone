@@ -1,7 +1,7 @@
 {
   "name": "react-native-agent-avatar",
   "version": "0.1.0",
-  "description": "Animated, procedurally generated agent avatars for React Native. Nine moods, five cuts, deterministic identity from a name. Rendered with Skia.",
+  "description": "Animated, procedurally generated agent avatars for React Native. Nine moods, seven cuts. Rendered with Skia.",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
   "exports": {

@@ -1,9 +1,9 @@
-import { computeFrame, identityFromName, MOOD_KEYS, CUT_KEYS } from '../src/core';
+import { computeFrame, DEFAULT_SEED, MOOD_KEYS, CUT_KEYS, PALETTE, PALETTE_KEYS } from '../src/core';
 import { renderAvatarSvg } from '../src/svg';
 const tiles: string[] = [];
 MOOD_KEYS.forEach((mood, i) => {
   const cut = CUT_KEYS[i % CUT_KEYS.length];
-  const spec = { ...identityFromName('Nova' + i), cut, mood, eyeColor: '#FFFFFF' };
+  const spec = { seed: DEFAULT_SEED, color: PALETTE[PALETTE_KEYS[i % PALETTE_KEYS.length]], cut, mood, eyeColor: '#FFFFFF' };
   const t = [0.2, 1.0, 2.0, 3.5][i % 4];
   tiles.push(renderAvatarSvg(spec, computeFrame(spec, t), { size: 120 }));
 });

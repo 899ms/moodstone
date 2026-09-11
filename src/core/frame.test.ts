@@ -1,26 +1,13 @@
 import { describe, expect, test } from 'bun:test';
-import { computeFrame, loopLength, seedFromName, identityFromName, litShade, hexToHsl, CUT_KEYS, MOOD_KEYS } from './index';
+import { computeFrame, loopLength, litShade, hexToHsl, CUT_KEYS, DEFAULT_SEED, MOOD_KEYS } from './index';
 import type { AvatarSpec } from './types';
 
 const specFor = (cut: AvatarSpec['cut'], mood: AvatarSpec['mood']): AvatarSpec => ({
-  seed: seedFromName('Nova'),
+  seed: DEFAULT_SEED,
   color: '#1F8A70',
   cut,
   mood,
   eyeColor: '#FFFFFF',
-});
-
-describe('seedFromName', () => {
-  test('is deterministic and name-sensitive', () => {
-    expect(seedFromName('Nova')).toEqual(seedFromName('Nova'));
-    expect(seedFromName('Nova')).not.toEqual(seedFromName('Atlas'));
-    expect(seedFromName('')).toEqual(seedFromName(''));
-  });
-  test('identity picks a palette colour and a cut', () => {
-    const id = identityFromName('Nova');
-    expect(id.color).toMatch(/^#[0-9A-F]{6}$/i);
-    expect(CUT_KEYS).toContain(id.cut);
-  });
 });
 
 describe('computeFrame', () => {

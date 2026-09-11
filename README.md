@@ -1,16 +1,15 @@
 # react-native-agent-avatar
 
-Animated, procedurally generated avatars for AI agents in React Native. Give an agent a name and it gets a consistent face; give it a mood and the face reacts. Rendered with [React Native Skia](https://shopify.github.io/react-native-skia/) on the UI thread.
+Animated, procedurally generated avatars for AI agents in React Native. Give an agent a mood and the face reacts. Rendered with [React Native Skia](https://shopify.github.io/react-native-skia/) on the UI thread.
 
 ```tsx
 import { AgentAvatar } from 'react-native-agent-avatar';
 
-<AgentAvatar name="Nova" mood="thinking" size={48} />
+<AgentAvatar color="pine" mood="thinking" size={48} />
 ```
 
 ## What you get
 
-- **Deterministic identity.** The name hashes to a colour, a cut and a lighting composition (where the light starts, which way it drifts), so `Nova` looks the same on every device. Override any of them.
 - **Lit surface.** The body is a two-hue gradient from a light source that slowly orbits, with a soft highlight and a per-pixel grain, all in one Skia runtime shader. Highlights lean warm, shadows lean cool.
 - **Nine moods**, each a seamless loop: `idle`, `observing`, `thinking`, `processing`, `working`, `done`, `failed`, `invalid`, `inactive`.
 - **Seven cuts** (silhouettes) from one polar shape engine: `circle`, `squircle`, `square`, `diamond`, `hexagon`, `badge`, `burst`. Changing the cut morphs the shape, and the eyes fit themselves to the silhouette automatically.
@@ -33,13 +32,12 @@ Peer dependencies: React 19+, React Native 0.78+, Skia 2+, Reanimated 4+. In Exp
 
 | Prop | Type | Default | Notes |
 |---|---|---|---|
-| `name` | `string` | `'Agent'` | Seeds colour, cut and facets. |
 | `mood` | `Mood` | `'idle'` | See the list above. Changing it restarts the loop from its rest pose. |
-| `color` | palette key or hex | from name | `'pine'`, `'#1F8A70'`. |
-| `cut` | `Cut` | from name | Silhouette preset. Changing it morphs. |
+| `color` | palette key or hex | `'pine'` | `'pine'`, `'#1F8A70'`. |
+| `cut` | `Cut` | `'circle'` | Silhouette preset. Changing it morphs. |
 | `shape` | `Partial<ShapeParams>` | | Custom silhouette from the shape engine, overriding the cut: `{ n: 4.5 }`, `{ lobes: 12, depth: 0.11, sharp: 1.6 }`, `{ sides: 6, round: 0.3 }`. Changes morph too. |
 | `eyeColor` | `'white' \| 'black' \| hex` | `'white'` | |
-| `seed` | `[number, number, number]` | from name | Light start angle, drift direction and orbit radius. |
+| `seed` | `[number, number, number]` | `DEFAULT_SEED` | Light start angle, drift direction and orbit radius. `randomSeed()` gives a fresh one. |
 | `size` | `number` | `64` | dp. |
 | `animated` | `boolean` | `true` | `false` renders one frame at `phase`. |
 | `paused` | `boolean` | `false` | Freezes the loop in place. |
@@ -51,7 +49,7 @@ Peer dependencies: React 19+, React Native 0.78+, Skia 2+, Reanimated 4+. In Exp
 
 ```tsx
 const ref = useRef<AgentAvatarHandle>(null);
-<AgentAvatar ref={ref} name="Nova" mood="done" />
+<AgentAvatar ref={ref} mood="done" />
 
 const image = ref.current?.snapshot({ size: 1024, background: '#0e1113' }); // SkImage
 const base64 = image?.encodeToBase64();
@@ -63,9 +61,9 @@ ref.current?.restart();
 ## Exports outside the app
 
 ```ts
-import { renderAvatarSvg, renderAnimatedAvatarSvg, computeFrame, identityFromName } from 'react-native-agent-avatar';
+import { renderAvatarSvg, renderAnimatedAvatarSvg, computeFrame, DEFAULT_SEED, PALETTE, type AvatarSpec } from 'react-native-agent-avatar';
 
-const spec = { ...identityFromName('Nova'), mood: 'thinking', eyeColor: '#FFFFFF' };
+const spec: AvatarSpec = { seed: DEFAULT_SEED, color: PALETTE.pine, cut: 'circle', mood: 'thinking', eyeColor: '#FFFFFF' };
 const still = renderAvatarSvg(spec, computeFrame(spec, 1.2), { size: 240 });
 const loop = renderAnimatedAvatarSvg(spec, { size: 240, fps: 24, background: '#0e1113' });
 ```
@@ -93,22 +91,22 @@ Each `AgentAvatar` is its own Skia canvas with its own clock. A handful of anima
 ## Core API
 
 ```ts
-import { computeFrame, identityFromName, seedFromName, loopLength, MOODS, CUTS, PALETTE, shapeRadii } from 'react-native-agent-avatar/core';
+import { computeFrame, randomSeed, loopLength, MOODS, CUTS, PALETTE, shapeRadii, type AvatarSpec } from 'react-native-agent-avatar/core';
 
-const spec = { ...identityFromName('Nova'), mood: 'done', eyeColor: '#FFFFFF' };
+const spec: AvatarSpec = { seed: randomSeed(), color: PALETTE.sky, cut: 'hexagon', mood: 'done', eyeColor: '#FFFFFF' };
 const frame = computeFrame(spec, 1.25); // plain numbers: eyes, tilt, light position, lit/shade hues, swirls, sleep marks
 ```
 
 ## Example app
 
-`example/` is an Expo app with a single-screen Studio: name, colour, cut, mood, eye colour, shape tuning sliders for the selected cut's family, loop scrubbing with play/pause/restart, size and a morph toggle. It also accepts deep-link parameters so it can be driven from a script:
+`example/` is an Expo app with a single-screen Studio: colour, cut, mood, eye colour, shape tuning sliders for the selected cut's family, loop scrubbing with play/pause/restart, size and a morph toggle. It also accepts deep-link parameters so it can be driven from a script:
 
 ```bash
 cd example && npx expo start --ios
 xcrun simctl openurl booted "exp://<host>:8081/--/?mood=failed&still=0.6&cut=burst&lobes=9"
 ```
 
-Parameters: `name`, `color`, `cut`, `mood`, `eyes`, `paused`, `still` (0..1), `morph`, `size`, `theme`, `restart`, and any shape knob (`n`, `ax`, `rot`, `lobes`, `depth`, `sharp`, `sides`, `round`).
+Parameters: `color`, `cut`, `mood`, `eyes`, `paused`, `still` (0..1), `morph`, `size`, `theme`, `restart`, and any shape knob (`n`, `ax`, `rot`, `lobes`, `depth`, `sharp`, `sides`, `round`).
 
 ## Development
 

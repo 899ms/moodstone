@@ -5,7 +5,7 @@ import { Canvas, Group, Path, Points, RoundedRect, Shader, interpolatePaths, use
 import type { SkImage, SkPath, SkPoint } from '@shopify/react-native-skia';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
-import { BOX, CENTER, EYE_BLACK, EYE_WHITE, clamp, computeFrame, easeInOut, identityFromName, loopLength, resolveColor, shapeContentScale, specShapeKey, swirlPoints } from './core';
+import { BOX, CENTER, DEFAULT_SEED, EYE_BLACK, EYE_WHITE, clamp, computeFrame, easeInOut, loopLength, resolveColor, shapeContentScale, specShapeKey, swirlPoints } from './core';
 import type { AvatarSpec, Cut, Frame, Mood, PaletteKey, Seed, ShapeParams } from './core';
 import { surfacePath } from './skia/paths';
 import { surfaceEffect, surfaceUniforms } from './skia/shader';
@@ -17,16 +17,11 @@ const NO_POINTS: SkPoint[] = [];
 const FAR_PAST = -1e12;
 
 export interface AgentAvatarProps {
-  /**
-   * The agent's name. Drives the default seed, colour and cut, so the same
-   * name always renders the same avatar.
-   */
-  name?: string;
-  /** Override the facet composition (three angles in radians). */
+  /** Facet composition (three angles in radians). Default `DEFAULT_SEED`. */
   seed?: Seed;
-  /** Palette key (`'pine'`) or any hex colour. Defaults to a palette colour picked from the name. */
+  /** Palette key (`'pine'`) or any hex colour. Default `'pine'`. */
   color?: PaletteKey | (string & {});
-  /** Surface silhouette. Defaults to one picked from the name. Changing it morphs the shape. */
+  /** Surface silhouette. Default `'circle'`. Changing it morphs the shape. */
   cut?: Cut;
   /**
    * Custom silhouette from the shape engine, overriding `cut`'s geometry:
@@ -79,26 +74,25 @@ function resolveEyeColor(c: string | undefined): string {
   return c;
 }
 
-/** Build the full spec from props, filling gaps from the name. */
+/** Build the full spec from props, filling gaps with defaults. */
 export function useAvatarSpec(props: AgentAvatarProps): AvatarSpec {
-  const { name = 'Agent', seed, color, cut, mood = 'idle', eyeColor, shape } = props;
+  const { seed, color = 'pine', cut = 'circle', mood = 'idle', eyeColor, shape } = props;
   const s0 = seed?.[0];
   const s1 = seed?.[1];
   const s2 = seed?.[2];
   const shapeKey = shape ? JSON.stringify(shape) : '';
   return useMemo(() => {
-    const id = identityFromName(name);
     const custom = shapeKey ? (JSON.parse(shapeKey) as Partial<ShapeParams>) : undefined;
     return {
-      seed: s0 !== undefined && s1 !== undefined && s2 !== undefined ? [s0, s1, s2] : id.seed,
-      color: resolveColor(color ?? id.color),
-      cut: cut ?? id.cut,
+      seed: s0 !== undefined && s1 !== undefined && s2 !== undefined ? [s0, s1, s2] : DEFAULT_SEED,
+      color: resolveColor(color),
+      cut,
       mood,
       eyeColor: resolveEyeColor(eyeColor),
       shape: custom,
       contentScale: custom ? shapeContentScale(custom) : undefined,
     };
-  }, [name, s0, s1, s2, color, cut, mood, eyeColor, shapeKey]);
+  }, [s0, s1, s2, color, cut, mood, eyeColor, shapeKey]);
 }
 
 /* ---- scene ---- */

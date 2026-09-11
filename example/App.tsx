@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Slider from '@react-native-community/slider';
@@ -11,18 +11,18 @@ import {
   PALETTE,
   PALETTE_KEYS,
   SHAPE_DEFAULTS,
-  identityFromName,
   loopLength,
+  randomSeed,
   type AgentAvatarHandle,
   type Cut,
   type Mood,
   type PaletteKey,
+  type Seed,
   type ShapeParams,
 } from 'react-native-agent-avatar';
 
 /* ---------- knobs ---------- */
 
-const NAMES = ['Nova', 'Atlas', 'Iris', 'Echo', 'Juno', 'Orbit', 'Vega', 'Lumen', 'Milo', 'Wren', 'Ember', 'Cove', 'Zephyr', 'Onyx', 'Pixel', 'Bolt'];
 const pick = <T,>(a: readonly T[]): T => a[Math.floor(Math.random() * a.length)];
 const MOOD_SET = new Set<string>(MOODS.map((m) => m.key));
 const CUT_SET = new Set<string>(CUT_KEYS);
@@ -97,9 +97,9 @@ function Studio() {
   const maxStage = Math.max(160, Math.min(240, height - 560));
 
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [name, setName] = useState('Nova');
-  const [color, setColor] = useState<PaletteKey | undefined>(undefined);
-  const [cut, setCut] = useState<Cut | undefined>(undefined);
+  const [color, setColor] = useState<PaletteKey>('pine');
+  const [cut, setCut] = useState<Cut>('circle');
+  const [seed, setSeed] = useState<Seed | undefined>(undefined);
   const [tune, setTune] = useState<Partial<ShapeParams> | null>(null);
   const [mood, setMood] = useState<Mood>('idle');
   const [eyes, setEyes] = useState<'white' | 'black'>('white');
@@ -110,22 +110,19 @@ function Studio() {
   const avatar = useRef<AgentAvatarHandle>(null);
   const scroller = useRef<ScrollView>(null);
 
-  const id = identityFromName(name);
-  const activeColor = color ? PALETTE[color] : id.color;
-  const activeCut = cut ?? id.cut;
-  const family = familyOf(activeCut);
+  const activeColor = PALETTE[color];
+  const family = familyOf(cut);
   const knobs = FAMILY_KNOBS[family];
-  const preset = useMemo(() => ({ ...SHAPE_DEFAULTS, ...CUTS[activeCut].shape }), [activeCut]);
+  const preset = useMemo(() => ({ ...SHAPE_DEFAULTS, ...CUTS[cut].shape }), [cut]);
   const shape = tune ? { ...preset, ...tune } : preset;
   const moodInfo = MOODS.find((m) => m.key === mood)!;
   const dark = theme === 'dark';
   const c = dark ? DARK : LIGHT;
 
-  // Selecting a cut (or a name that implies one) returns the knobs to that preset.
-  useEffect(() => setTune(null), [activeCut]);
+  // Selecting a cut returns the knobs to that preset.
+  useEffect(() => setTune(null), [cut]);
 
   useEffect(() => {
-    if (params.name) setName(params.name);
     if (params.color && params.color in PALETTE) setColor(params.color as PaletteKey);
     if (params.cut && CUT_SET.has(params.cut)) setCut(params.cut as Cut);
     if (params.mood && MOOD_SET.has(params.mood)) setMood(params.mood as Mood);
@@ -148,7 +145,7 @@ function Studio() {
   }, [params]);
 
   const randomise = () => {
-    setName(pick(NAMES.filter((n) => n !== name)));
+    setSeed(randomSeed());
     setColor(pick(PALETTE_KEYS));
     setCut(pick(CUT_KEYS));
     setMood(pick(MOODS).key);
@@ -178,7 +175,7 @@ function Studio() {
       <View style={[styles.stage, { height: maxStage + 16, backgroundColor: c.panel }]}>
         <AgentAvatar
           ref={avatar}
-          name={name}
+          seed={seed}
           color={color}
           cut={cut}
           shape={tune ? shape : undefined}
@@ -190,22 +187,12 @@ function Studio() {
           morphDuration={morph}
         />
       </View>
-      <View style={styles.nameRow}>
-        <TextInput
-          value={name}
-          onChangeText={setName}
-          placeholder="Agent name"
-          placeholderTextColor={c.muted}
-          style={[styles.name, { color: c.text }]}
-          returnKeyType="done"
-        />
-        <Text style={[styles.sub, { color: c.muted }]}>
-          {moodInfo.label} · {moodInfo.hint} · {paused ? 'paused' : 'looping'}
-        </Text>
-      </View>
+      <Text style={[styles.sub, { color: c.muted }]}>
+        {moodInfo.label} · {moodInfo.hint} · {paused ? 'paused' : 'looping'}
+      </Text>
 
       {/* controls */}
-      <ScrollView ref={scroller} contentContainerStyle={styles.controls} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scroller} contentContainerStyle={styles.controls} showsVerticalScrollIndicator={false}>
         <Section label="Mood" c={c}>
           {MOODS.map((m) => (
             <Pressable key={m.key} onPress={() => setMood(m.key)} style={[styles.chip, { backgroundColor: c.chip }, ring(m.key === mood)]}>
@@ -215,7 +202,7 @@ function Studio() {
         </Section>
         <Section label="Cut" c={c}>
           {CUT_KEYS.map((k) => (
-            <Pressable key={k} onPress={() => setCut(k)} style={[styles.chip, { backgroundColor: c.chip }, ring(k === activeCut)]}>
+            <Pressable key={k} onPress={() => setCut(k)} style={[styles.chip, { backgroundColor: c.chip }, ring(k === cut)]}>
               <Text style={[styles.chipText, { color: c.text }]}>{CUTS[k].label}</Text>
             </Pressable>
           ))}
@@ -353,9 +340,7 @@ const styles = StyleSheet.create({
   pill: { height: 32, borderRadius: 9, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
   pillText: { color: '#0b0e10', fontWeight: '700', fontSize: 13 },
   stage: { borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginTop: 6 },
-  nameRow: { alignItems: 'center', marginTop: 8, marginBottom: 6 },
-  name: { fontSize: 20, fontWeight: '700', textAlign: 'center', paddingVertical: 2, minWidth: 140 },
-  sub: { fontSize: 11, marginTop: -2 },
+  sub: { fontSize: 11, textAlign: 'center', marginTop: 8, marginBottom: 6 },
   controls: { paddingTop: 6, paddingBottom: 40, gap: 22 },
   section: { gap: 10 },
   sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 24 },
