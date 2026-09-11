@@ -19,10 +19,10 @@
       "bun"
     ],
     "paths": {
-      "react-native-agent-avatar": [
+      "moodstone": [
         "./src/index"
       ],
-      "react-native-agent-avatar/core": [
+      "moodstone/core": [
         "./src/core/index"
       ]
     },

@@ -1,11 +1,11 @@
-# react-native-agent-avatar
+# moodstone
 
 Animated, procedurally generated avatars for AI agents in React Native. Give an agent a mood and the face reacts. Rendered with [React Native Skia](https://shopify.github.io/react-native-skia/) on the UI thread.
 
 ```tsx
-import { AgentAvatar } from 'react-native-agent-avatar';
+import { Moodstone } from 'moodstone';
 
-<AgentAvatar color="pine" mood="thinking" size={48} />
+<Moodstone color="pine" mood="thinking" size={48} />
 ```
 
 ## What you get
@@ -17,13 +17,13 @@ import { AgentAvatar } from 'react-native-agent-avatar';
 - **UI-thread animation.** One pure function, `computeFrame(spec, t)`, describes every frame. Skia reads it through Reanimated derived values, so the JS thread stays idle. Pause, restart, or offset the loop.
 - **Exports.** PNG at any size through a ref, a still SVG, and a self-contained animated SVG of the whole loop.
 - **Still frames** for lists (`animated={false}`).
-- **Platform-agnostic core.** `react-native-agent-avatar/core` has no React Native imports. The same maths drives the HTML canvas renderer in the dev harness.
+- **Platform-agnostic core.** `moodstone/core` has no React Native imports. The same maths drives the HTML canvas renderer in the dev harness.
 
 ## Install
 
 ```bash
 npx expo install @shopify/react-native-skia react-native-reanimated react-native-worklets
-npm install react-native-agent-avatar
+npm install moodstone
 ```
 
 Peer dependencies: React 19+, React Native 0.78+, Skia 2+, Reanimated 4+. In Expo Go the JavaScript versions must match the native ones baked into the Go binary, which is exactly what `npx expo install` gives you.
@@ -48,8 +48,8 @@ Peer dependencies: React 19+, React Native 0.78+, Skia 2+, Reanimated 4+. In Exp
 ### Ref handle
 
 ```tsx
-const ref = useRef<AgentAvatarHandle>(null);
-<AgentAvatar ref={ref} mood="done" />
+const ref = useRef<MoodstoneHandle>(null);
+<Moodstone ref={ref} mood="done" />
 
 const image = ref.current?.snapshot({ size: 1024, background: '#0e1113' }); // SkImage
 const base64 = image?.encodeToBase64();
@@ -61,7 +61,7 @@ ref.current?.restart();
 ## Exports outside the app
 
 ```ts
-import { renderAvatarSvg, renderAnimatedAvatarSvg, computeFrame, DEFAULT_SEED, PALETTE, type AvatarSpec } from 'react-native-agent-avatar';
+import { renderAvatarSvg, renderAnimatedAvatarSvg, computeFrame, DEFAULT_SEED, PALETTE, type AvatarSpec } from 'moodstone';
 
 const spec: AvatarSpec = { seed: DEFAULT_SEED, color: PALETTE.pine, cut: 'circle', mood: 'thinking', eyeColor: '#FFFFFF' };
 const still = renderAvatarSvg(spec, computeFrame(spec, 1.2), { size: 240 });
@@ -86,12 +86,12 @@ The animated SVG uses SMIL, samples every attribute from `computeFrame`, and loo
 
 ## Performance notes
 
-Each `AgentAvatar` is its own Skia canvas with its own clock. A handful of animated avatars on a screen is cheap. For long lists, render rows with `animated={false}` and animate only the avatar the user is looking at. The example's Wall runs 45 animated avatars at once on an iPhone simulator without dropping frames, but treat that as the upper end.
+Each `Moodstone` is its own Skia canvas with its own clock. A handful of animated avatars on a screen is cheap. For long lists, render rows with `animated={false}` and animate only the avatar the user is looking at. The example's Wall runs 45 animated avatars at once on an iPhone simulator without dropping frames, but treat that as the upper end.
 
 ## Core API
 
 ```ts
-import { computeFrame, randomSeed, loopLength, MOODS, CUTS, PALETTE, shapeRadii, type AvatarSpec } from 'react-native-agent-avatar/core';
+import { computeFrame, randomSeed, loopLength, MOODS, CUTS, PALETTE, shapeRadii, type AvatarSpec } from 'moodstone/core';
 
 const spec: AvatarSpec = { seed: randomSeed(), color: PALETTE.sky, cut: 'hexagon', mood: 'done', eyeColor: '#FFFFFF' };
 const frame = computeFrame(spec, 1.25); // plain numbers: eyes, tilt, light position, lit/shade hues, swirls, sleep marks

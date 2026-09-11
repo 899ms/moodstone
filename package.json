@@ -1,5 +1,5 @@
 {
-  "name": "react-native-agent-avatar",
+  "name": "moodstone",
   "version": "0.1.0",
   "description": "Animated, procedurally generated agent avatars for React Native. Nine moods, seven cuts. Rendered with Skia.",
   "main": "./lib/module/index.js",
@@ -43,7 +43,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/karacca/react-native-agent-avatar.git"
+    "url": "git+https://github.com/karacca/moodstone.git"
   },
   "author": "Ömer Karaca <omerkaracca@gmail.com>",
   "license": "MIT",

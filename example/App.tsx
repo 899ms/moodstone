@@ -4,22 +4,22 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Slider from '@react-native-community/slider';
 import {
-  AgentAvatar,
   CUTS,
   CUT_KEYS,
   MOODS,
+  Moodstone,
   PALETTE,
   PALETTE_KEYS,
   SHAPE_DEFAULTS,
   loopLength,
   randomSeed,
-  type AgentAvatarHandle,
   type Cut,
   type Mood,
+  type MoodstoneHandle,
   type PaletteKey,
   type Seed,
   type ShapeParams,
-} from 'react-native-agent-avatar';
+} from 'moodstone';
 
 /* ---------- knobs ---------- */
 
@@ -107,7 +107,7 @@ function Studio() {
   const [phase, setPhase] = useState(0);
   const [size, setSize] = useState(maxStage);
   const [morph, setMorph] = useState(460);
-  const avatar = useRef<AgentAvatarHandle>(null);
+  const avatar = useRef<MoodstoneHandle>(null);
   const scroller = useRef<ScrollView>(null);
 
   const activeColor = PALETTE[color];
@@ -161,7 +161,7 @@ function Studio() {
 
       {/* header */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: c.text }]}>Agent Avatar</Text>
+        <Text style={[styles.title, { color: c.text }]}>Moodstone</Text>
         <View style={{ flex: 1 }} />
         <Pressable onPress={() => setTheme(dark ? 'light' : 'dark')} style={[styles.iconButton, { backgroundColor: c.chip }]}>
           <Text style={[styles.icon, { color: c.muted }]}>{dark ? '☾' : '☀'}</Text>
@@ -173,7 +173,7 @@ function Studio() {
 
       {/* stage */}
       <View style={[styles.stage, { height: maxStage + 16, backgroundColor: c.panel }]}>
-        <AgentAvatar
+        <Moodstone
           ref={avatar}
           seed={seed}
           color={color}

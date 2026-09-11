@@ -14,8 +14,8 @@ const RAD2DEG = 180 / Math.PI;
 const cutClip = (spec: AvatarSpec) => `<path d="${pointsToPathD(specPoints(spec))}"/>`;
 
 /** Static grain: fractal noise in overlay mode at low opacity. */
-const GRAIN_FILTER = `<filter id="agent-avatar-grain" x="0" y="0" width="1" height="1"><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch" result="n"/><feColorMatrix in="n" type="saturate" values="0"/></filter>`;
-const grainRect = () => `<rect width="${BOX}" height="${BOX}" filter="url(#agent-avatar-grain)" opacity="${GRAIN * 3}" style="mix-blend-mode:overlay"/>`;
+const GRAIN_FILTER = `<filter id="moodstone-grain" x="0" y="0" width="1" height="1"><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch" result="n"/><feColorMatrix in="n" type="saturate" values="0"/></filter>`;
+const grainRect = () => `<rect width="${BOX}" height="${BOX}" filter="url(#moodstone-grain)" opacity="${GRAIN * 3}" style="mix-blend-mode:overlay"/>`;
 
 function polylineD(flat: number[]): string {
   let d = '';
@@ -42,8 +42,8 @@ export interface SvgOptions {
 export function renderAvatarSvg(spec: AvatarSpec, frame: Frame, opts: SvgOptions = {}): string {
   const size = opts.size ?? 240;
   // The clip depends only on the cut, so equal ids across avatars on one page are harmless.
-  const clipId = `agent-avatar-cut-${spec.cut}`;
-  const gradId = `agent-avatar-light-${spec.cut}-${frame.lit.slice(1)}-${frame.shade.slice(1)}`;
+  const clipId = `moodstone-cut-${spec.cut}`;
+  const gradId = `moodstone-light-${spec.cut}-${frame.lit.slice(1)}-${frame.shade.slice(1)}`;
   const [lx, ly] = frame.light;
   const gradient = `<radialGradient id="${gradId}" gradientUnits="userSpaceOnUse" cx="${f(lx)}" cy="${f(ly)}" r="${LIGHT_REACH}"><stop offset="0" stop-color="${frame.lit}"/><stop offset="1" stop-color="${frame.shade}"/></radialGradient>`;
   const highlight = `<radialGradient id="${gradId}-hi" gradientUnits="userSpaceOnUse" cx="${f(lx)}" cy="${f(ly)}" r="${LIGHT_REACH / 2}"><stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>`;
@@ -106,7 +106,7 @@ export function renderAnimatedAvatarSvg(spec: AvatarSpec, opts: AnimatedSvgOptio
   const animT = (type: string, values: string[]) =>
     `<animateTransform attributeName="transform" type="${type}" values="${values.join(';')}" keyTimes="${keyTimes}" dur="${dur}" repeatCount="indefinite"/>`;
   const varies = (vals: number[]) => vals.some((v) => Math.abs(v - vals[0]) > 1e-3);
-  const clipId = `agent-avatar-cut-${spec.cut}`;
+  const clipId = `moodstone-cut-${spec.cut}`;
 
   // Body motion.
   const tx = frames.map((fr) => fr.offset[0]);
@@ -122,7 +122,7 @@ export function renderAnimatedAvatarSvg(spec: AvatarSpec, opts: AnimatedSvgOptio
   const lx = frames.map((fr) => fr.light[0]);
   const ly = frames.map((fr) => fr.light[1]);
   const lightMoves = varies(lx) || varies(ly);
-  const gradId = `agent-avatar-light-${spec.cut}-${spec.mood}`;
+  const gradId = `moodstone-light-${spec.cut}-${spec.mood}`;
   const lightAnim = lightMoves ? anim('cx', lx.map(f)) + anim('cy', ly.map(f)) : '';
   const gradient =
     `<radialGradient id="${gradId}" gradientUnits="userSpaceOnUse" cx="${f(lx[0])}" cy="${f(ly[0])}" r="${LIGHT_REACH}">${lightAnim}` +

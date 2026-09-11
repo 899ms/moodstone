@@ -16,7 +16,7 @@ const ORIGIN = { x: CENTER, y: CENTER };
 const NO_POINTS: SkPoint[] = [];
 const FAR_PAST = -1e12;
 
-export interface AgentAvatarProps {
+export interface MoodstoneProps {
   /** Facet composition (three angles in radians). Default `DEFAULT_SEED`. */
   seed?: Seed;
   /** Palette key (`'pine'`) or any hex colour. Default `'pine'`. */
@@ -59,7 +59,7 @@ export interface SnapshotOptions {
   phase?: number;
 }
 
-export interface AgentAvatarHandle {
+export interface MoodstoneHandle {
   /** Render the avatar to an image, offscreen. */
   snapshot(opts?: SnapshotOptions): SkImage | null;
   /** Restart the current mood's loop from its rest pose. */
@@ -75,7 +75,7 @@ function resolveEyeColor(c: string | undefined): string {
 }
 
 /** Build the full spec from props, filling gaps with defaults. */
-export function useAvatarSpec(props: AgentAvatarProps): AvatarSpec {
+export function useAvatarSpec(props: MoodstoneProps): AvatarSpec {
   const { seed, color = 'pine', cut = 'circle', mood = 'idle', eyeColor, shape } = props;
   const s0 = seed?.[0];
   const s1 = seed?.[1];
@@ -196,7 +196,7 @@ interface SourceProps {
   style?: StyleProp<ViewStyle>;
 }
 
-const AnimatedAvatar = forwardRef<AgentAvatarHandle, SourceProps>(function AnimatedAvatar(
+const AnimatedAvatar = forwardRef<MoodstoneHandle, SourceProps>(function AnimatedAvatar(
   { spec, size, phase, paused, morphDuration, style },
   ref,
 ) {
@@ -260,7 +260,7 @@ const AnimatedAvatar = forwardRef<AgentAvatarHandle, SourceProps>(function Anima
   return <Scene frame={frame} surface={surface} eyeColor={spec.eyeColor} size={size} style={style} />;
 });
 
-const StillAvatar = forwardRef<AgentAvatarHandle, SourceProps>(function StillAvatar({ spec, size, phase, style }, ref) {
+const StillAvatar = forwardRef<MoodstoneHandle, SourceProps>(function StillAvatar({ spec, size, phase, style }, ref) {
   const t = phase * loopLength(spec.mood);
   const frame = useSharedValue<Frame>(computeFrame(spec, t));
   const surface = useSharedValue<SkPath>(surfacePath(spec));
@@ -284,7 +284,7 @@ const StillAvatar = forwardRef<AgentAvatarHandle, SourceProps>(function StillAva
 });
 
 /** An animated agent avatar rendered with Skia. */
-export const AgentAvatar = forwardRef<AgentAvatarHandle, AgentAvatarProps>(function AgentAvatar(props, ref) {
+export const Moodstone = forwardRef<MoodstoneHandle, MoodstoneProps>(function Moodstone(props, ref) {
   const { size = 64, animated = true, paused = false, phase = 0, morphDuration = 460, style } = props;
   const spec = useAvatarSpec(props);
   return animated ? (

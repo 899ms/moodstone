@@ -3,10 +3,10 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "react-native-agent-avatar": [
+      "moodstone": [
         "../src/index.ts"
       ],
-      "react-native-agent-avatar/core": [
+      "moodstone/core": [
         "../src/core/index.ts"
       ]
     }

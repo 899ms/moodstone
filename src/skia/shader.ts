@@ -41,7 +41,7 @@ let effect: SkRuntimeEffect | null = null;
 export function surfaceEffect(): SkRuntimeEffect {
   if (!effect) {
     effect = Skia.RuntimeEffect.Make(SURFACE_SKSL);
-    if (!effect) throw new Error('react-native-agent-avatar: the surface shader failed to compile');
+    if (!effect) throw new Error('moodstone: the surface shader failed to compile');
   }
   return effect;
 }

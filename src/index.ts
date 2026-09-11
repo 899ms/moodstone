@@ -1,5 +1,5 @@
-export { AgentAvatar, useAvatarSpec } from './AgentAvatar';
-export type { AgentAvatarProps, AgentAvatarHandle, SnapshotOptions } from './AgentAvatar';
+export { Moodstone, useAvatarSpec } from './Moodstone';
+export type { MoodstoneProps, MoodstoneHandle, SnapshotOptions } from './Moodstone';
 export { renderAvatarImage, drawAvatarSkia } from './skia/draw';
 export type { SkiaDrawOptions } from './skia/draw';
 export { cutPath, surfacePath, outlinePath } from './skia/paths';
