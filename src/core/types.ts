@@ -73,8 +73,12 @@ export interface Frame {
   tilt: number;
   /** Body translation. */
   offset: readonly [number, number];
-  /** Facet plane rotations in radians, each about its own centre. */
-  planeAngles: readonly [number, number, number];
+  /** Light source position in box units: the bright end of the surface gradient. */
+  light: readonly [number, number];
+  /** Lit hue derived from `color` this frame. */
+  lit: string;
+  /** Shaded hue derived from `color` this frame. */
+  shade: string;
   /** Always four entries. Unused ones have alpha 0. */
   eyes: readonly [EyeRect, EyeRect, EyeRect, EyeRect];
   swirls: readonly Swirl[];

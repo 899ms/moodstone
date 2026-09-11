@@ -1,6 +1,6 @@
 import { Skia } from '@shopify/react-native-skia';
 import type { SkPath } from '@shopify/react-native-skia';
-import { CENTER, CUTS, PLANES } from '../core';
+import { CENTER, CUTS } from '../core';
 import type { Cut, CutPart } from '../core';
 
 const DEG = Math.PI / 180;
@@ -40,13 +40,3 @@ export function cutPath(cut: Cut): SkPath {
   cutCache.set(cut, path);
   return path;
 }
-
-let planeCache: SkPath[] | null = null;
-
-/** The three facet planes, each centred on its own pivot. */
-export function planePaths(): SkPath[] {
-  if (!planeCache) planeCache = PLANES.map((pl) => rrectPath(pl.cx, pl.cy, pl.w, pl.h, pl.r, 0));
-  return planeCache;
-}
-
-export const PLANE_ORIGINS = PLANES.map((pl) => ({ x: pl.cx, y: pl.cy }));

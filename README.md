@@ -10,7 +10,8 @@ import { AgentAvatar } from 'react-native-agent-avatar';
 
 ## What you get
 
-- **Deterministic identity.** The name hashes to a colour, a cut and a facet composition, so `Nova` looks the same on every device. Override any of them.
+- **Deterministic identity.** The name hashes to a colour, a cut and a lighting composition (where the light starts, which way it drifts), so `Nova` looks the same on every device. Override any of them.
+- **Lit surface.** The body is a two-hue gradient from a light source that slowly orbits, with a soft highlight and a per-pixel grain, all in one Skia runtime shader. Highlights lean warm, shadows lean cool.
 - **Nine moods**, each a seamless loop: `idle`, `observing`, `thinking`, `processing`, `working`, `done`, `failed`, `invalid`, `inactive`.
 - **Five cuts** (silhouettes): `rounded`, `badge`, `diamond`, `flower`, `burst`. Changing the cut morphs the shape.
 - **Twelve palette colours**, or any hex. White or black eyes.
@@ -37,7 +38,7 @@ Peer dependencies: React 19+, React Native 0.78+, Skia 2+, Reanimated 4+. In Exp
 | `color` | palette key or hex | from name | `'pine'`, `'#1F8A70'`. |
 | `cut` | `Cut` | from name | Silhouette. Changing it morphs. |
 | `eyeColor` | `'white' \| 'black' \| hex` | `'white'` | |
-| `seed` | `[number, number, number]` | from name | Facet plane rotations in radians. |
+| `seed` | `[number, number, number]` | from name | Light start angle, drift direction and orbit radius. |
 | `size` | `number` | `64` | dp. |
 | `animated` | `boolean` | `true` | `false` renders one frame at `phase`. |
 | `paused` | `boolean` | `false` | Freezes the loop in place. |
@@ -94,7 +95,7 @@ Each `AgentAvatar` is its own Skia canvas with its own clock. A handful of anima
 import { computeFrame, identityFromName, seedFromName, loopLength, MOODS, CUTS, PALETTE } from 'react-native-agent-avatar/core';
 
 const spec = { ...identityFromName('Nova'), mood: 'done', eyeColor: '#FFFFFF' };
-const frame = computeFrame(spec, 1.25); // plain numbers: eyes, tilt, plane angles, colour, swirls, sleep marks
+const frame = computeFrame(spec, 1.25); // plain numbers: eyes, tilt, light position, lit/shade hues, swirls, sleep marks
 ```
 
 ## Example app
@@ -119,7 +120,7 @@ npm run build                               # bob → lib/
 
 ## Credits
 
-The idea of a faceted, single-colour agent face whose whole personality lives in two eyes comes from Plane's [Agent Avatar Lab](https://agents.plane.so/). Geometry, palette, timing and code here are original.
+The idea of a single-colour agent face whose whole personality lives in two eyes comes from Plane's [Agent Avatar Lab](https://agents.plane.so/). The surface treatment, geometry, palette, timing and code here are original.
 
 ## License
 

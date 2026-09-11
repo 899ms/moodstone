@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { computeFrame, loopLength, seedFromName, identityFromName, CUT_KEYS, MOOD_KEYS, TAU } from './index';
+import { computeFrame, loopLength, seedFromName, identityFromName, litShade, hexToHsl, CUT_KEYS, MOOD_KEYS } from './index';
 import type { AvatarSpec } from './types';
 
 const specFor = (cut: AvatarSpec['cut'], mood: AvatarSpec['mood']): AvatarSpec => ({
@@ -9,11 +9,6 @@ const specFor = (cut: AvatarSpec['cut'], mood: AvatarSpec['mood']): AvatarSpec =
   mood,
   eyeColor: '#FFFFFF',
 });
-
-const angleDiff = (a: number, b: number) => {
-  const d = ((a - b) % TAU + TAU) % TAU;
-  return Math.min(d, TAU - d);
-};
 
 describe('seedFromName', () => {
   test('is deterministic and name-sensitive', () => {
@@ -43,7 +38,9 @@ describe('computeFrame', () => {
           expect(b.eyes[i].cy).toBeCloseTo(a.eyes[i].cy, 6);
           expect(b.eyes[i].h).toBeCloseTo(a.eyes[i].h, 6);
         }
-        for (let i = 0; i < 3; i++) expect(angleDiff(a.planeAngles[i], b.planeAngles[i])).toBeLessThan(1e-6);
+        expect(b.light[0]).toBeCloseTo(a.light[0], 6);
+        expect(b.light[1]).toBeCloseTo(a.light[1], 6);
+        expect(b.lit).toBe(a.lit);
       });
 
       test(`${mood}/${cut}: seamless at the loop boundary`, () => {
@@ -58,7 +55,8 @@ describe('computeFrame', () => {
           expect(Math.abs(a.eyes[i].w - b.eyes[i].w)).toBeLessThan(0.1);
           expect(Math.abs(a.eyes[i].h - b.eyes[i].h)).toBeLessThan(0.1);
         }
-        for (let i = 0; i < 3; i++) expect(angleDiff(a.planeAngles[i], b.planeAngles[i])).toBeLessThan(0.01);
+        expect(Math.abs(a.light[0] - b.light[0])).toBeLessThan(0.1);
+        expect(Math.abs(a.light[1] - b.light[1])).toBeLessThan(0.1);
         expect(a.color).toBe(b.color);
       });
 
@@ -94,6 +92,14 @@ describe('computeFrame', () => {
     expect(computeFrame(spec, 0.2).swirls.length).toBe(0);
     expect(computeFrame(spec, 3.3).swirls.length).toBe(2);
     expect(computeFrame(spec, 5.0).swirls.length).toBe(0);
+  });
+
+  test('lit and shade hues bracket the base lightness', () => {
+    for (const base of ['#1F8A70', '#FFD447', '#3FC1F5', '#F48FB1']) {
+      const [lit, shade] = litShade(base);
+      expect(hexToHsl(lit)[2]).toBeGreaterThan(hexToHsl(base)[2]);
+      expect(hexToHsl(shade)[2]).toBeLessThan(hexToHsl(base)[2]);
+    }
   });
 
   test('inactive floats sleep marks', () => {

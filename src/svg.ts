@@ -1,6 +1,5 @@
 import type { AvatarSpec, Frame } from './core/types';
-import { BOX, CENTER, CUTS, PLANES, PLANE_ALPHA } from './core/geometry';
-import { selfMultiply } from './core/color';
+import { BOX, CENTER, CUTS, GRAIN, LIGHT_REACH } from './core/geometry';
 import { computeFrame, swirlPoints } from './core/frame';
 import { loopLength } from './core/moods';
 import { clamp } from './core/math';
@@ -19,6 +18,10 @@ function cutRects(spec: AvatarSpec, attrs: string): string {
     )
     .join('');
 }
+
+/** Static grain: fractal noise in overlay mode at low opacity. */
+const GRAIN_FILTER = `<filter id="agent-avatar-grain" x="0" y="0" width="1" height="1"><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch" result="n"/><feColorMatrix in="n" type="saturate" values="0"/></filter>`;
+const grainRect = () => `<rect width="${BOX}" height="${BOX}" filter="url(#agent-avatar-grain)" opacity="${GRAIN * 3}" style="mix-blend-mode:overlay"/>`;
 
 function polylineD(flat: number[]): string {
   let d = '';
@@ -39,19 +42,17 @@ export interface SvgOptions {
 }
 
 /**
- * Render a single frame as a static SVG string. Uses no blend modes:
- * the facets are drawn with the self-multiplied colour at 30% opacity,
- * which is equivalent to a 30% multiply layer over the surface.
+ * Render a single frame as a static SVG string. The surface is a radial
+ * two-hue gradient from the light position plus feTurbulence grain.
  */
 export function renderAvatarSvg(spec: AvatarSpec, frame: Frame, opts: SvgOptions = {}): string {
   const size = opts.size ?? 240;
   // The clip depends only on the cut, so equal ids across avatars on one page are harmless.
   const clipId = `agent-avatar-cut-${spec.cut}`;
-  const facet = selfMultiply(frame.color);
-  const planes = PLANES.map((pl, i) => {
-    const deg = frame.planeAngles[i] * RAD2DEG;
-    return `<rect x="${f(pl.cx - pl.w / 2)}" y="${f(pl.cy - pl.h / 2)}" width="${f(pl.w)}" height="${f(pl.h)}" rx="${f(pl.r)}" fill="${facet}" fill-opacity="${PLANE_ALPHA}" transform="rotate(${f(deg)} ${f(pl.cx)} ${f(pl.cy)})"/>`;
-  }).join('');
+  const gradId = `agent-avatar-light-${spec.cut}-${frame.lit.slice(1)}-${frame.shade.slice(1)}`;
+  const [lx, ly] = frame.light;
+  const gradient = `<radialGradient id="${gradId}" gradientUnits="userSpaceOnUse" cx="${f(lx)}" cy="${f(ly)}" r="${LIGHT_REACH}"><stop offset="0" stop-color="${frame.lit}"/><stop offset="1" stop-color="${frame.shade}"/></radialGradient>`;
+  const highlight = `<radialGradient id="${gradId}-hi" gradientUnits="userSpaceOnUse" cx="${f(lx)}" cy="${f(ly)}" r="${LIGHT_REACH / 2}"><stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>`;
   const eyes = frame.eyes
     .filter((e) => e.alpha > 0 && e.w > 0 && e.h > 0)
     .map((e) => {
@@ -77,9 +78,9 @@ export function renderAvatarSvg(spec: AvatarSpec, frame: Frame, opts: SvgOptions
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${BOX} ${BOX}">` +
     bg +
-    `<defs><clipPath id="${clipId}">${cutRects(spec, '')}</clipPath></defs>` +
+    `<defs><clipPath id="${clipId}">${cutRects(spec, '')}</clipPath>${gradient}${highlight}${GRAIN_FILTER}</defs>` +
     `<g transform="${body}">` +
-    `<g clip-path="url(#${clipId})"><rect width="${BOX}" height="${BOX}" fill="${frame.color}"/>${planes}</g>` +
+    `<g clip-path="url(#${clipId})"><rect width="${BOX}" height="${BOX}" fill="url(#${gradId})"/><rect width="${BOX}" height="${BOX}" fill="url(#${gradId}-hi)"/>${grainRect()}</g>` +
     eyes +
     swirls +
     zs +
@@ -120,22 +121,23 @@ export function renderAnimatedAvatarSvg(spec: AvatarSpec, opts: AnimatedSvgOptio
   const translateAnim = varies(tx) || varies(ty) ? animT('translate', frames.map((fr) => `${f(fr.offset[0])} ${f(fr.offset[1])}`)) : '';
   const rotateAnim = varies(tilt) ? animT('rotate', tilt.map((v) => `${f(v)} ${CENTER} ${CENTER}`)) : '';
 
-  // Surface colour (the `done` mood cycles it) and facets.
-  const colors = frames.map((fr) => fr.color);
-  const colorVaries = colors.some((c) => c !== colors[0]);
-  const surface = `<rect width="${BOX}" height="${BOX}" fill="${colors[0]}">${colorVaries ? anim('fill', colors) : ''}</rect>`;
-  const facets = colors.map(selfMultiply);
-  const planes = PLANES.map((pl, i) => {
-    const vals = frames.map((fr) => `${f(fr.planeAngles[i] * RAD2DEG)} ${f(pl.cx)} ${f(pl.cy)}`);
-    const spins = varies(frames.map((fr) => fr.planeAngles[i]));
-    const staticRot = spins ? '' : ` transform="rotate(${vals[0]})"`;
-    return (
-      `<rect x="${f(pl.cx - pl.w / 2)}" y="${f(pl.cy - pl.h / 2)}" width="${f(pl.w)}" height="${f(pl.h)}" rx="${f(pl.r)}" fill="${facets[0]}" fill-opacity="${PLANE_ALPHA}"${staticRot}>` +
-      (colorVaries ? anim('fill', facets) : '') +
-      (spins ? animT('rotate', vals) : '') +
-      `</rect>`
-    );
-  }).join('');
+  // Surface: the light drifts, and the `done` mood cycles the hues.
+  const lits = frames.map((fr) => fr.lit);
+  const shades = frames.map((fr) => fr.shade);
+  const colorVaries = lits.some((c) => c !== lits[0]);
+  const lx = frames.map((fr) => fr.light[0]);
+  const ly = frames.map((fr) => fr.light[1]);
+  const lightMoves = varies(lx) || varies(ly);
+  const gradId = `agent-avatar-light-${spec.cut}-${spec.mood}`;
+  const lightAnim = lightMoves ? anim('cx', lx.map(f)) + anim('cy', ly.map(f)) : '';
+  const gradient =
+    `<radialGradient id="${gradId}" gradientUnits="userSpaceOnUse" cx="${f(lx[0])}" cy="${f(ly[0])}" r="${LIGHT_REACH}">${lightAnim}` +
+    `<stop offset="0" stop-color="${lits[0]}">${colorVaries ? anim('stop-color', lits) : ''}</stop>` +
+    `<stop offset="1" stop-color="${shades[0]}">${colorVaries ? anim('stop-color', shades) : ''}</stop></radialGradient>`;
+  const highlight =
+    `<radialGradient id="${gradId}-hi" gradientUnits="userSpaceOnUse" cx="${f(lx[0])}" cy="${f(ly[0])}" r="${LIGHT_REACH / 2}">${lightAnim}` +
+    `<stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>`;
+  const surface = `<rect width="${BOX}" height="${BOX}" fill="url(#${gradId})"/><rect width="${BOX}" height="${BOX}" fill="url(#${gradId}-hi)"/>${grainRect()}`;
 
   // Eyes: one rect per slot that is ever visible.
   const eyes = [0, 1, 2, 3]
@@ -191,9 +193,9 @@ export function renderAnimatedAvatarSvg(spec: AvatarSpec, opts: AnimatedSvgOptio
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${BOX} ${BOX}">` +
     bg +
-    `<defs><clipPath id="${clipId}">${cutRects(spec, '')}</clipPath></defs>` +
+    `<defs><clipPath id="${clipId}">${cutRects(spec, '')}</clipPath>${gradient}${highlight}${GRAIN_FILTER}</defs>` +
     `<g>${translateAnim}<g>${rotateAnim}` +
-    `<g clip-path="url(#${clipId})">${surface}${planes}</g>` +
+    `<g clip-path="url(#${clipId})">${surface}</g>` +
     eyes +
     swirls +
     zs +

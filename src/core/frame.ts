@@ -1,8 +1,8 @@
 import type { AvatarSpec, EyeRect, Frame, Mood, SleepMark, Swirl } from './types';
 import { TAU, clamp, lerp, easeInOut, easeBack, pwl, ramp, pulse, smoothstep, wrap01 } from './math';
-import { CENTER, CUTS, EYE } from './geometry';
+import { CENTER, CUTS, EYE, LIGHT_ORBIT } from './geometry';
 import { MOOD_CYCLE, MOOD_REPS } from './moods';
-import { celebrationColor } from './color';
+import { celebrationColor, litShade } from './color';
 
 /* ------------------------------------------------------------------
    Everything below is a pure function of (spec, time). It runs on the
@@ -120,7 +120,7 @@ const WORK_BLINKS: readonly number[] = [0.303, 0.637, 0.97];
 const SINGLE_EARLY_BLINK: readonly number[] = [0.1];
 const SINGLE_FIRST_BLINK: readonly number[] = [0.07];
 
-/* ---- thinking: planes speed up while the dot bobs (2 revolutions per cycle) ---- */
+/* ---- thinking: the light races around while the dot bobs (2 revolutions per cycle) ---- */
 const THINK_WARP: ReadonlyArray<readonly [number, number]> = [
   [0, 0],
   [0.32, 0.3],
@@ -233,9 +233,7 @@ export function computeFrame(spec: AvatarSpec, t: number): Frame {
   let oy = 0;
   let color = spec.color;
   let openness = 1;
-  let revs0 = 0;
-  let revs1 = 0;
-  let revs2 = 0;
+  let revs = 0;
   let warp = -1;
   let poses: Pose[];
   let swirlAmt = 0;
@@ -253,9 +251,7 @@ export function computeFrame(spec: AvatarSpec, t: number): Frame {
       poses = [l, r];
       tilt = -ax * 0.65;
       openness = opennessAt(p, cycle, OBSERVE_BLINKS, 1);
-      revs0 = 1;
-      revs1 = -1;
-      revs2 = 1;
+      revs = 1;
       break;
     }
     case 'thinking': {
@@ -296,9 +292,7 @@ export function computeFrame(spec: AvatarSpec, t: number): Frame {
         poses.push(lerpPose(restPose(i < 2 ? 0 : 1, 0, 0, lift), dot, m));
       }
       openness = opennessAt(p, cycle, SINGLE_EARLY_BLINK, 1);
-      revs0 = 1;
-      revs1 = -1;
-      revs2 = 1;
+      revs = 1;
       break;
     }
     case 'working': {
@@ -314,9 +308,7 @@ export function computeFrame(spec: AvatarSpec, t: number): Frame {
       poses = [restPose(0, dx, dy, lift), restPose(1, dx, dy, lift)];
       tilt = -0.35 * dx;
       openness = opennessAt(p, cycle, WORK_BLINKS, 0.7);
-      revs0 = 1;
-      revs1 = -1;
-      revs2 = 1;
+      revs = 1;
       break;
     }
     case 'done': {
@@ -335,9 +327,7 @@ export function computeFrame(spec: AvatarSpec, t: number): Frame {
       }
       tilt = cel * 12 * Math.sin(TAU * 7 * p);
       color = celebrationColor(spec.color, p, cel);
-      revs0 = 1;
-      revs1 = -1;
-      revs2 = 1;
+      revs = 1;
       break;
     }
     case 'failed': {
@@ -390,21 +380,18 @@ export function computeFrame(spec: AvatarSpec, t: number): Frame {
       const g = gazeAt(IDLE_TRACK, p);
       poses = [restPose(0, g[0], g[1], lift), restPose(1, g[2], g[3], lift)];
       openness = opennessAt(p, cycle, IDLE_BLINKS, 1);
-      revs0 = 1;
-      revs1 = -1;
-      revs2 = 1;
+      revs = 1;
       break;
     }
   }
 
-  // Plane rotation: whole revolutions per loop, so the loop is seamless.
-  let planeAngles: [number, number, number];
-  if (warp >= 0) {
-    planeAngles = [base[0] + TAU * warp, base[1] - TAU * warp, base[2] + TAU * warp];
-  } else {
-    const u = TAU * (tl / L);
-    planeAngles = [base[0] + revs0 * u, base[1] + revs1 * u, base[2] + revs2 * u];
-  }
+  // The light source orbits the centre: whole revolutions per loop keep it seamless.
+  // Direction and orbit radius come from the seed so agents drift differently.
+  const dir = base[1] > Math.PI ? -1 : 1;
+  const orbit = LIGHT_ORBIT * (0.85 + 0.3 * (base[2] / TAU));
+  const angle = warp >= 0 ? base[0] + dir * TAU * warp : base[0] + dir * revs * TAU * (tl / L);
+  const light: [number, number] = [CENTER + orbit * Math.cos(angle), CENTER + orbit * Math.sin(angle)];
+  const [lit, shade] = litShade(color);
 
   // Blink squash: shut eyes get a touch wider and almost flat.
   const sx = 1 + 0.05 * (1 - openness);
@@ -433,7 +420,9 @@ export function computeFrame(spec: AvatarSpec, t: number): Frame {
     color,
     tilt,
     offset: [ox, oy],
-    planeAngles,
+    light,
+    lit,
+    shade,
     eyes,
     swirls,
     sleepMarks,

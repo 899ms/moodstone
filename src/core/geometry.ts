@@ -73,23 +73,12 @@ export const CUTS: Record<Cut, CutDef> = {
 
 export const CUT_KEYS: readonly Cut[] = ['rounded', 'badge', 'diamond', 'flower', 'burst'];
 
-/** A facet plane: a rounded rectangle that rotates about its own centre, blended onto the surface. */
-export interface PlaneDef {
-  cx: number;
-  cy: number;
-  w: number;
-  h: number;
-  r: number;
-}
-
-export const PLANES: readonly [PlaneDef, PlaneDef, PlaneDef] = [
-  { cx: 10, cy: 42, w: 46, h: 24, r: 10 },
-  { cx: 36, cy: 40, w: 38, h: 22, r: 9 },
-  { cx: 56, cy: 14, w: 46, h: 26, r: 10 },
-];
-
-/** Strength of the multiply-blended planes. */
-export const PLANE_ALPHA = 0.3;
+/** Radius of the light source's orbit around the centre, in box units. */
+export const LIGHT_ORBIT = 24;
+/** Distance over which the lit hue fades into the shaded hue. */
+export const LIGHT_REACH = 74;
+/** Luminance amplitude of the grain overlay (0..1). */
+export const GRAIN = 0.07;
 
 /** Resting eye geometry. */
 export const EYE = {

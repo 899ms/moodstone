@@ -1,5 +1,5 @@
 import type { AvatarSpec, Cut, Frame, SleepMark } from './core/types';
-import { BOX, CENTER, CUTS, PLANES, PLANE_ALPHA } from './core/geometry';
+import { BOX, CENTER, CUTS, GRAIN, LIGHT_REACH } from './core/geometry';
 import { swirlPoints } from './core/frame';
 
 /**
@@ -19,6 +19,26 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 }
 
 const surfaceCache = new Map<Cut, Path2D>();
+
+let grainTile: HTMLCanvasElement | null = null;
+/** A 256px tile of grey noise, drawn as a repeating pattern in overlay mode. */
+function grainPattern(ctx: CanvasRenderingContext2D, pixelsPerUnit: number): CanvasPattern | null {
+  if (!grainTile) {
+    grainTile = document.createElement('canvas');
+    grainTile.width = grainTile.height = 256;
+    const g = grainTile.getContext('2d')!;
+    const img = g.createImageData(256, 256);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = 96 + Math.floor(Math.random() * 64);
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+      img.data[i + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+  }
+  const pat = ctx.createPattern(grainTile, 'repeat');
+  if (pat && 'setTransform' in pat) pat.setTransform(new DOMMatrix().scale(1.5 / pixelsPerUnit));
+  return pat;
+}
 
 /** Silhouette as a Path2D in box coordinates. */
 export function surfacePath2D(cut: Cut): Path2D {
@@ -83,21 +103,28 @@ export function drawAvatar(ctx: CanvasRenderingContext2D, spec: AvatarSpec, fram
     ctx.translate(-CENTER, -CENTER);
   }
 
-  // Surface + facet planes (clipped).
+  // Surface: radial two-hue gradient from the light, plus grain, clipped to the silhouette.
   ctx.save();
   ctx.clip(surfacePath2D(spec.cut));
-  ctx.fillStyle = frame.color;
+  const [lx, ly] = frame.light;
+  const grad = ctx.createRadialGradient(lx, ly, 0, lx, ly, LIGHT_REACH);
+  grad.addColorStop(0, frame.lit);
+  grad.addColorStop(1, frame.shade);
+  ctx.fillStyle = grad;
   ctx.fillRect(0, 0, BOX, BOX);
-  ctx.globalCompositeOperation = 'multiply';
-  ctx.globalAlpha = PLANE_ALPHA;
-  for (let i = 0; i < 3; i++) {
-    const pl = PLANES[i];
-    ctx.save();
-    ctx.translate(pl.cx, pl.cy);
-    ctx.rotate(frame.planeAngles[i]);
-    roundRect(ctx, -pl.w / 2, -pl.h / 2, pl.w, pl.h, pl.r);
-    ctx.fill();
-    ctx.restore();
+  const hi = ctx.createRadialGradient(lx, ly, 0, lx, ly, LIGHT_REACH * 0.5);
+  hi.addColorStop(0, 'rgba(255,255,255,0.10)');
+  hi.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = hi;
+  ctx.fillRect(0, 0, BOX, BOX);
+  const pat = grainPattern(ctx, s);
+  if (pat) {
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.globalAlpha = GRAIN * 4;
+    ctx.fillStyle = pat;
+    ctx.fillRect(0, 0, BOX, BOX);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
   }
   ctx.restore();
 

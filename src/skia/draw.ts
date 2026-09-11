@@ -1,8 +1,9 @@
-import { BlendMode, ClipOp, PaintStyle, PointMode, Skia, StrokeCap, StrokeJoin, drawAsImageFromPicture } from '@shopify/react-native-skia';
+import { PaintStyle, PointMode, Skia, StrokeCap, StrokeJoin, drawAsImageFromPicture } from '@shopify/react-native-skia';
 import type { SkCanvas, SkImage, SkPoint } from '@shopify/react-native-skia';
-import { BOX, CENTER, PLANES, PLANE_ALPHA, swirlPoints } from '../core';
+import { BOX, CENTER, swirlPoints } from '../core';
 import type { AvatarSpec, Frame } from '../core';
-import { cutPath, planePaths } from './paths';
+import { cutPath } from './paths';
+import { makeSurfaceShader } from './shader';
 
 const RAD2DEG = 180 / Math.PI;
 
@@ -26,26 +27,11 @@ export function drawAvatarSkia(canvas: SkCanvas, spec: AvatarSpec, frame: Frame,
   canvas.translate(frame.offset[0], frame.offset[1]);
   if (frame.tilt !== 0) canvas.rotate(frame.tilt, CENTER, CENTER);
 
-  // Surface and facet planes, clipped to the silhouette.
-  canvas.save();
-  canvas.clipPath(cutPath(spec.cut), ClipOp.Intersect, true);
+  // Surface: lit gradient with grain, clipped to the silhouette.
   const fill = Skia.Paint();
   fill.setAntiAlias(true);
-  fill.setColor(Skia.Color(frame.color));
-  canvas.drawRect(Skia.XYWHRect(0, 0, BOX, BOX), fill);
-  const facet = Skia.Paint();
-  facet.setAntiAlias(true);
-  facet.setColor(Skia.Color(frame.color));
-  facet.setBlendMode(BlendMode.Multiply);
-  facet.setAlphaf(PLANE_ALPHA);
-  const planes = planePaths();
-  for (let i = 0; i < 3; i++) {
-    canvas.save();
-    canvas.rotate(frame.planeAngles[i] * RAD2DEG, PLANES[i].cx, PLANES[i].cy);
-    canvas.drawPath(planes[i], facet);
-    canvas.restore();
-  }
-  canvas.restore();
+  fill.setShader(makeSurfaceShader(frame, s));
+  canvas.drawPath(cutPath(spec.cut), fill);
 
   // Eyes.
   const eye = Skia.Paint();

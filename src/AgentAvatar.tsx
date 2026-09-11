@@ -1,12 +1,14 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo } from 'react';
+import { PixelRatio } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
-import { Canvas, Group, Path, Points, RoundedRect, interpolatePaths, useClock } from '@shopify/react-native-skia';
+import { Canvas, Group, Path, Points, RoundedRect, Shader, interpolatePaths, useClock } from '@shopify/react-native-skia';
 import type { SkImage, SkPath, SkPoint } from '@shopify/react-native-skia';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
-import { BOX, CENTER, EYE_BLACK, EYE_WHITE, PLANE_ALPHA, clamp, computeFrame, easeInOut, identityFromName, loopLength, resolveColor, swirlPoints } from './core';
+import { BOX, CENTER, EYE_BLACK, EYE_WHITE, clamp, computeFrame, easeInOut, identityFromName, loopLength, resolveColor, swirlPoints } from './core';
 import type { AvatarSpec, Cut, Frame, Mood, PaletteKey, Seed } from './core';
-import { PLANE_ORIGINS, cutPath, planePaths } from './skia/paths';
+import { cutPath } from './skia/paths';
+import { surfaceEffect, surfaceUniforms } from './skia/shader';
 import { renderAvatarImage } from './skia/draw';
 
 const DEG = Math.PI / 180;
@@ -148,27 +150,22 @@ function SleepMark({ frame, index, color }: { frame: SharedValue<Frame>; index: 
 }
 
 function Scene({ frame, surface, eyeColor, size, style }: SceneProps) {
-  const planes = useMemo(() => planePaths(), []);
+  const effect = useMemo(() => surfaceEffect(), []);
+  const px = (size * PixelRatio.get()) / BOX;
   const scale = useMemo(() => [{ scale: size / BOX }], [size]);
   const body = useDerivedValue(() => [
     { translateX: frame.value.offset[0] },
     { translateY: frame.value.offset[1] },
     { rotate: frame.value.tilt * DEG },
   ]);
-  const color = useDerivedValue(() => frame.value.color);
-  const plane0 = useDerivedValue(() => [{ rotate: frame.value.planeAngles[0] }]);
-  const plane1 = useDerivedValue(() => [{ rotate: frame.value.planeAngles[1] }]);
-  const plane2 = useDerivedValue(() => [{ rotate: frame.value.planeAngles[2] }]);
+  const uniforms = useDerivedValue(() => surfaceUniforms(frame.value, px), [px]);
   return (
     <Canvas style={[{ width: size, height: size }, style]}>
       <Group transform={scale}>
         <Group origin={ORIGIN} transform={body}>
-          <Group clip={surface}>
-            <Path path={surface} color={color} />
-            <Path path={planes[0]} color={color} opacity={PLANE_ALPHA} blendMode="multiply" origin={PLANE_ORIGINS[0]} transform={plane0} />
-            <Path path={planes[1]} color={color} opacity={PLANE_ALPHA} blendMode="multiply" origin={PLANE_ORIGINS[1]} transform={plane1} />
-            <Path path={planes[2]} color={color} opacity={PLANE_ALPHA} blendMode="multiply" origin={PLANE_ORIGINS[2]} transform={plane2} />
-          </Group>
+          <Path path={surface}>
+            <Shader source={effect} uniforms={uniforms} />
+          </Path>
           <Eye frame={frame} index={0} color={eyeColor} />
           <Eye frame={frame} index={1} color={eyeColor} />
           <Eye frame={frame} index={2} color={eyeColor} />
