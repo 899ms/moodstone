@@ -139,6 +139,9 @@ function Studio() {
   };
 
   const ring = (on: boolean) => ({ borderColor: on ? activeColor : 'transparent' });
+  // The accent is the selected colour, so an accent ring would vanish into the selected swatch. It gets a text-coloured
+  // ring with a gap instead; the others fill that space with their own colour.
+  const swatch = (k: PaletteKey) => (k === color ? { borderColor: c.text } : { borderColor: 'transparent', backgroundColor: PALETTE[k] });
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: c.bg }]}>
@@ -178,7 +181,9 @@ function Studio() {
         </Section>
         <Section label="Colour" c={c}>
           {PALETTE_KEYS.map((k) => (
-            <Pressable key={k} onPress={() => setColor(k)} style={[styles.swatch, { backgroundColor: PALETTE[k] }, ring(PALETTE[k] === activeColor)]} />
+            <Pressable key={k} onPress={() => setColor(k)} style={[styles.swatch, swatch(k)]}>
+              <View style={[styles.swatchFill, { backgroundColor: PALETTE[k] }]} />
+            </Pressable>
           ))}
         </Section>
         <Section
@@ -263,7 +268,8 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   column: { gap: 10 },
-  swatch: { width: 32, height: 32, borderRadius: 10, borderWidth: 2 },
+  swatch: { width: 32, height: 32, borderRadius: 10, borderWidth: 2, padding: 2 },
+  swatchFill: { flex: 1, borderRadius: 6 },
   knob: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 34 },
   knobLabel: { width: 84, fontSize: 13 },
   slider: { flex: 1, height: 34 },
