@@ -1,4 +1,5 @@
 import { clamp, wrap01 } from './math';
+import { PALETTE } from './palette';
 
 export type RGB = readonly [number, number, number];
 
@@ -34,16 +35,6 @@ export function mixColor(a: string, b: string, u: number): string {
   return toHex([A[0] + (B[0] - A[0]) * u, A[1] + (B[1] - A[1]) * u, A[2] + (B[2] - A[2]) * u]);
 }
 
-/**
- * The colour you get by multiply-blending `c` onto itself at full strength.
- * Drawing this at 30% opacity with normal compositing is identical to a
- * 30% multiply layer, which lets renderers without blend modes fake the facets.
- */
-export function selfMultiply(c: string): string {
-  'worklet';
-  const [r, g, b] = parseColor(c);
-  return toHex([(r * r) / 255, (g * g) / 255, (b * b) / 255]);
-}
 
 /** Hex → [hue 0..360, saturation 0..1, lightness 0..1]. */
 export function hexToHsl(c: string): [number, number, number] {
@@ -115,18 +106,18 @@ export function rgb01(c: string): [number, number, number] {
   return [r / 255, g / 255, b / 255];
 }
 
-/** Saturated hues cycled during the `done` celebration. */
+/** Saturated palette hues cycled during the `done` celebration, in hue order. */
 export const RAINBOW: readonly string[] = [
-  '#D63A2F',
-  '#F2705B',
-  '#FF9F43',
-  '#FFD447',
-  '#C5D94A',
-  '#1F8A70',
-  '#5FC7B0',
-  '#3FC1F5',
-  '#9B59B6',
-  '#F48FB1',
+  PALETTE.cherry,
+  PALETTE.salmon,
+  PALETTE.tangerine,
+  PALETTE.lemon,
+  PALETTE.lime,
+  PALETTE.pine,
+  PALETTE.mint,
+  PALETTE.sky,
+  PALETTE.plum,
+  PALETTE.rose,
 ];
 
 export function rainbowAt(phase: number): string {

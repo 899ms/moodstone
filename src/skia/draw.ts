@@ -1,8 +1,8 @@
 import { PaintStyle, PointMode, Skia, StrokeCap, StrokeJoin, drawAsImageFromPicture } from '@shopify/react-native-skia';
-import type { SkCanvas, SkImage, SkPoint } from '@shopify/react-native-skia';
-import { BOX, CENTER, swirlPoints } from '../core';
+import type { SkCanvas, SkImage } from '@shopify/react-native-skia';
+import { BOX, CENTER, SWIRL_STROKE, sleepMarkPoints, swirlPoints } from '../core';
 import type { AvatarSpec, Frame } from '../core';
-import { surfacePath } from './paths';
+import { surfacePath, toSkPoints } from './paths';
 import { makeSurfaceShader } from './shader';
 
 const RAD2DEG = 180 / Math.PI;
@@ -33,12 +33,13 @@ export function drawAvatarSkia(canvas: SkCanvas, spec: AvatarSpec, frame: Frame,
   fill.setShader(makeSurfaceShader(frame, s));
   canvas.drawPath(surfacePath(spec), fill);
 
-  // Eyes.
+  // Eyes, swirls and sleep marks all take the eye colour. Setting the colour resets the alpha, so both are set per mark.
+  const eyeColor = Skia.Color(spec.eyeColor);
   const eye = Skia.Paint();
   eye.setAntiAlias(true);
   for (const e of frame.eyes) {
     if (e.alpha <= 0 || e.w <= 0 || e.h <= 0) continue;
-    eye.setColor(Skia.Color(spec.eyeColor));
+    eye.setColor(eyeColor);
     eye.setAlphaf(e.alpha);
     canvas.save();
     if (e.rot !== 0) canvas.rotate(e.rot * RAD2DEG, e.cx, e.cy);
@@ -54,29 +55,16 @@ export function drawAvatarSkia(canvas: SkCanvas, spec: AvatarSpec, frame: Frame,
     stroke.setStrokeCap(StrokeCap.Round);
     stroke.setStrokeJoin(StrokeJoin.Round);
     for (const sw of frame.swirls) {
-      const flat = swirlPoints(sw);
-      const pts: SkPoint[] = [];
-      for (let i = 0; i < flat.length; i += 2) pts.push({ x: flat[i], y: flat[i + 1] });
-      stroke.setColor(Skia.Color(spec.eyeColor));
+      stroke.setColor(eyeColor);
       stroke.setAlphaf(sw.alpha);
-      stroke.setStrokeWidth(0.85);
-      canvas.drawPoints(PointMode.Polygon, pts, stroke);
+      stroke.setStrokeWidth(SWIRL_STROKE);
+      canvas.drawPoints(PointMode.Polygon, toSkPoints(swirlPoints(sw)), stroke);
     }
     for (const m of frame.sleepMarks) {
-      const h = m.size / 2;
-      stroke.setColor(Skia.Color(spec.eyeColor));
+      stroke.setColor(eyeColor);
       stroke.setAlphaf(m.alpha);
-      stroke.setStrokeWidth(Math.max(0.6, m.size * 0.22));
-      canvas.drawPoints(
-        PointMode.Polygon,
-        [
-          { x: m.x - h, y: m.y - h },
-          { x: m.x + h, y: m.y - h },
-          { x: m.x - h, y: m.y + h },
-          { x: m.x + h, y: m.y + h },
-        ],
-        stroke,
-      );
+      stroke.setStrokeWidth(m.strokeWidth);
+      canvas.drawPoints(PointMode.Polygon, toSkPoints(sleepMarkPoints(m)), stroke);
     }
   }
   canvas.restore();

@@ -5,27 +5,30 @@ import type { ShapeParams } from './shape';
 
 export { BOX, CENTER } from './box';
 
+/** A silhouette preset. */
 export interface CutDef {
   label: string;
   /** Parameters for the polar shape engine. */
   shape: Partial<ShapeParams>;
   /** Outline as flat [x, y, …] in box coordinates, SHAPE_SAMPLES points. */
   points: number[];
-  /** Face elements are pulled toward the centre by this factor for narrower silhouettes. */
+  /** How far the face pulls toward the centre to fit the silhouette, 0.55..1. */
   contentScale: number;
-  /** Vertical nudge (in box units, before scaling) so eyes sit centred in the shape. */
-  eyeLift: number;
 }
 
-function makeCut(label: string, shape: Partial<ShapeParams>, eyeLift = 0): CutDef {
+/** Inscribed radius at which the face is drawn full size. A circle's is BODY_RADIUS, 28. */
+const FULL_FACE_RADIUS = 27;
+/** The face never shrinks below this, however narrow the silhouette. */
+const MIN_CONTENT_SCALE = 0.55;
+
+/** Face scale from a silhouette's radii: narrower shapes pull the eyes toward the centre. */
+function contentScaleOf(radii: number[]): number {
+  return clamp(inscribedRadius(radii) / FULL_FACE_RADIUS, MIN_CONTENT_SCALE, 1);
+}
+
+function makeCut(label: string, shape: Partial<ShapeParams>): CutDef {
   const radii = shapeRadii(shape);
-  return {
-    label,
-    shape,
-    points: radiiToPoints(radii),
-    contentScale: clamp(inscribedRadius(radii) / 27, 0.55, 1),
-    eyeLift,
-  };
+  return { label, shape, points: radiiToPoints(radii), contentScale: contentScaleOf(radii) };
 }
 
 export const CUTS: Record<Cut, CutDef> = {
@@ -38,7 +41,8 @@ export const CUTS: Record<Cut, CutDef> = {
   burst: makeCut('Burst', { n: 2, lobes: 12, depth: 0.11, sharp: 1.6 }),
 };
 
-export const CUT_KEYS: readonly Cut[] = ['circle', 'squircle', 'square', 'diamond', 'hexagon', 'badge', 'burst'];
+/** Cut names in display order. */
+export const CUT_KEYS: readonly Cut[] = Object.keys(CUTS) as Cut[];
 
 /**
  * The shape parameters each cut exposes for tuning. Only parameters that
@@ -83,7 +87,16 @@ export function tunedShape(cut: Cut, tune: Tune): Partial<ShapeParams> {
 
 /** Face scale for any shape: how far the eyes pull toward the centre. */
 export function shapeContentScale(shape: Partial<ShapeParams>): number {
-  return clamp(inscribedRadius(shapeRadii(shape)) / 27, 0.55, 1);
+  return contentScaleOf(shapeRadii(shape));
+}
+
+/**
+ * Fill in what a spec leaves to be computed: the face scale of a custom
+ * `shape`. Plain JS, not for worklets, so resolve once and reuse the result.
+ */
+export function resolveSpec(spec: AvatarSpec): AvatarSpec {
+  if (!spec.shape || spec.contentScale !== undefined) return spec;
+  return { ...spec, contentScale: shapeContentScale(spec.shape) };
 }
 
 /** Outline points for a spec: its custom shape when set, else its cut. Plain JS, not for worklets. */
@@ -96,19 +109,25 @@ export function specShapeKey(spec: Pick<AvatarSpec, 'cut' | 'shape'>): string {
   return spec.shape ? 'shape:' + JSON.stringify(spec.shape) : 'cut:' + spec.cut;
 }
 
-/** Radius of the light source's orbit around the centre, in box units. */
+/** Radius of the light source's orbit around the centre, in box units, before the seed scales it. */
 export const LIGHT_ORBIT = 24;
 /** Distance over which the lit hue fades into the shaded hue. */
 export const LIGHT_REACH = 74;
 /** Luminance amplitude of the grain overlay (0..1). */
 export const GRAIN = 0.07;
 
-/** Resting eye geometry. */
+/** Resting eye geometry in the 64×64 box. */
 export const EYE = {
+  /** Width. */
   w: 7,
+  /** Height. */
   h: 10.5,
+  /** Corner radius. */
   r: 2,
+  /** Centre x of the left eye. */
   cxL: 22,
+  /** Centre x of the right eye. */
   cxR: 42,
+  /** Centre y of both eyes, a little below the middle. */
   cy: 43.5,
 } as const;

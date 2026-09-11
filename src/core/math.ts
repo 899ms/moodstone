@@ -33,9 +33,10 @@ export function smoothstep(x: number): number {
   return u * u * (3 - 2 * u);
 }
 
-/** Piecewise-linear interpolation over points sorted by x. */
+/** Piecewise-linear interpolation over points sorted by x. Holds the end values outside the range. */
 export function pwl(x: number, pts: ReadonlyArray<readonly [number, number]>): number {
   'worklet';
+  if (x <= pts[0][0]) return pts[0][1];
   for (let k = 0; k < pts.length - 1; k++) {
     const b = pts[k + 1];
     if (x <= b[0]) {

@@ -1,4 +1,4 @@
-import { TAU, clamp } from './math';
+import { TAU, clamp, wrap01 } from './math';
 import { CENTER } from './box';
 
 /**
@@ -13,27 +13,33 @@ export const BODY_RADIUS = 28;
 export interface ShapeParams {
   /** Superellipse exponent: 2 circle, ~4.5 squircle, 9 soft square, 16 square. */
   n: number;
-  /** Aspect scale on x and y. */
+  /** Superellipse width relative to its height: above 1 is wider, below 1 taller. */
   ax: number;
-  ay: number;
   /** Rotation of the whole shape, degrees. */
   rot: number;
-  /** Lobe count (0 = none), relative depth, and sharpness (<1 rounds valleys, >1 pinches them). */
+  /** Number of lobes around the edge, 0 for none. */
   lobes: number;
+  /** How far lobes push out and valleys cut in, as a fraction of the radius. */
   depth: number;
+  /** Lobe profile: 1 is a wave, below 1 gives broad lobes and narrow valleys, above 1 narrow spikes and broad valleys. */
   sharp: number;
-  /** Regular polygon sides (0 = use the superellipse) and corner rounding 0..0.5. */
+  /** Regular polygon sides, or 0 to use the superellipse. */
   sides: number;
+  /** Polygon corner rounding, from 0 sharp to 0.5 fully rounded. */
   round: number;
 }
 
-export const SHAPE_DEFAULTS: ShapeParams = { n: 2, ax: 1, ay: 1, rot: 0, lobes: 0, depth: 0, sharp: 1, sides: 0, round: 0.3 };
+export const SHAPE_DEFAULTS: ShapeParams = { n: 2, ax: 1, rot: 0, lobes: 0, depth: 0, sharp: 1, sides: 0, round: 0.3 };
 
-function superRadius(n: number, ax: number, ay: number, t: number): number {
+/** Superellipse radius at angle `t`, before normalisation. */
+function superRadius(n: number, ax: number, t: number): number {
   const c = Math.abs(Math.cos(t)) / ax;
-  const s = Math.abs(Math.sin(t)) / ay;
+  const s = Math.abs(Math.sin(t));
   return Math.pow(Math.pow(c, n) + Math.pow(s, n), -1 / n);
 }
+
+/** Points per corner curve and per straight edge in a polygon outline. */
+const POLYGON_SEGMENT_POINTS = 24;
 
 /** Dense outline of a regular polygon with quadratic-rounded corners, unit circumradius, vertex 0 at angle 0. */
 function polygonOutline(sides: number, round: number): Array<[number, number]> {
@@ -43,11 +49,12 @@ function polygonOutline(sides: number, round: number): Array<[number, number]> {
     v.push([Math.cos(t), Math.sin(t)]);
   }
   const out: Array<[number, number]> = [];
-  const per = 24;
+  const per = POLYGON_SEGMENT_POINTS;
   for (let i = 0; i < sides; i++) {
     const p = v[(i + sides - 1) % sides];
     const c = v[i];
     const nx = v[(i + 1) % sides];
+    // The corner curve runs from `a` on the incoming edge, through the vertex's pull, to `b` on the outgoing edge.
     const a: [number, number] = [c[0] + (p[0] - c[0]) * round, c[1] + (p[1] - c[1]) * round];
     const b: [number, number] = [c[0] + (nx[0] - c[0]) * round, c[1] + (nx[1] - c[1]) * round];
     for (let j = 0; j <= per; j++) {
@@ -72,18 +79,19 @@ function polarResample(outline: Array<[number, number]>, count: number): number[
     .sort((p, q) => p[0] - q[0]);
   const m = polar.length;
   const out: number[] = [];
-  let j = 0;
+  // Index of the last outline point at or before the target angle, -1 while the target precedes them all.
+  let j = -1;
   for (let i = 0; i < count; i++) {
     const t = (i / count) * TAU;
     while (j < m - 1 && polar[j + 1][0] <= t) j++;
-    const a = polar[j];
+    // The neighbours on either side of t, wrapping across 2π at both ends.
+    const a = polar[(j + m) % m];
     const b = polar[(j + 1) % m];
     let span = b[0] - a[0];
     let off = t - a[0];
     if (span <= 0) span += TAU;
     if (off < 0) off += TAU;
-    const u = span > 0 ? clamp(off / span, 0, 1) : 0;
-    out.push(a[1] + (b[1] - a[1]) * u);
+    out.push(a[1] + (b[1] - a[1]) * clamp(off / span, 0, 1));
   }
   return out;
 }
@@ -97,15 +105,15 @@ export function shapeRadii(params: Partial<ShapeParams>): number[] {
   const radii: number[] = [];
   for (let i = 0; i < N; i++) {
     const t = (i / N) * TAU;
-    const tl = t - rotRad; // local angle
+    const tl = t - rotRad; // angle in the shape's own, unrotated frame
     let r: number;
     if (poly) {
-      const f = ((((tl / TAU) % 1) + 1) % 1) * N;
+      const f = wrap01(tl / TAU) * N;
       const k = Math.floor(f);
       const u = f - k;
       r = poly[k % N] * (1 - u) + poly[(k + 1) % N] * u;
     } else {
-      r = superRadius(p.n, p.ax, p.ay, tl);
+      r = superRadius(p.n, p.ax, tl);
     }
     if (p.lobes > 0) {
       const w = (Math.cos(p.lobes * tl) + 1) / 2;
@@ -135,6 +143,7 @@ export function radiiToPoints(radii: number[]): number[] {
   return out;
 }
 
+/** The smallest radius: the largest circle about the centre that fits inside the outline. */
 export function inscribedRadius(radii: number[]): number {
   let m = Infinity;
   for (let i = 0; i < radii.length; i++) m = Math.min(m, radii[i]);

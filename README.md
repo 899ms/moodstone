@@ -62,7 +62,7 @@ Each cut exposes the shape parameters that visibly change it, listed in `CUT_TUN
 <Moodstone cut="circle" tune={{ rot: 30 }} />    // type error: rotating a circle does nothing
 ```
 
-The check needs a literal `cut`. When the cut comes from state, TypeScript can't pair it with the tune, so take the keys from `CUT_TUNES[cut]` and cast the pair to `CutTune`. Keys a cut doesn't expose are ignored at runtime either way. Outside React, set the spec's `shape` to `tunedShape(cut, tune)` and its `contentScale` to `shapeContentScale(shape)`, as the component does.
+The check needs a literal `cut`. When the cut comes from state, TypeScript can't pair it with the tune, so take the keys from `CUT_TUNES[cut]` and cast the pair to `CutTune`. Keys a cut doesn't expose are ignored at runtime either way. Outside React, set the spec's `shape` to `tunedShape(cut, tune)` and pass the spec through `resolveSpec`, which fills in the face scale for the shape, as the component does.
 
 ### Ref handle
 
@@ -115,6 +115,8 @@ import { computeFrame, randomSeed, loopLength, MOODS, CUTS, PALETTE, shapeRadii,
 const spec: AvatarSpec = { seed: randomSeed(), color: PALETTE.sky, cut: 'hexagon', mood: 'done', eyeColor: '#FFFFFF' };
 const frame = computeFrame(spec, 1.25); // plain numbers: eyes, tilt, light position, lit/shade hues, swirls, sleep marks
 ```
+
+A spec with a custom `shape` needs its face scale before `computeFrame` can place the eyes. `resolveSpec(spec)` fills it in; `renderAnimatedAvatarSvg` does this for you.
 
 ## Example app
 

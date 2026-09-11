@@ -1,23 +1,39 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useMemo } from 'react';
+import { useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import type { Ref } from 'react';
 import { PixelRatio } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
-import { Canvas, Group, Path, Points, RoundedRect, Shader, interpolatePaths, useClock } from '@shopify/react-native-skia';
+import { Canvas, Group, Path, Points, RoundedRect, Shader, interpolatePaths } from '@shopify/react-native-skia';
 import type { SkImage, SkPath, SkPoint } from '@shopify/react-native-skia';
-import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
+import { Easing, useDerivedValue, useFrameCallback, useSharedValue, withTiming } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
-import { BOX, CENTER, DEFAULT_SEED, EYE_BLACK, EYE_WHITE, clamp, computeFrame, easeInOut, loopLength, resolveColor, shapeContentScale, specShapeKey, swirlPoints, tunedShape } from './core';
+import {
+  BOX,
+  CENTER,
+  DEFAULT_SEED,
+  EYE_BLACK,
+  EYE_WHITE,
+  SWIRL_STROKE,
+  computeFrame,
+  easeInOut,
+  loopLength,
+  resolveColor,
+  resolveSpec,
+  sleepMarkPoints,
+  specShapeKey,
+  swirlPoints,
+  tunedShape,
+} from './core';
 import type { AvatarSpec, Cut, CutTune, Frame, Mood, PaletteKey, Seed, ShapeParams, Tune } from './core';
-import { surfacePath } from './skia/paths';
+import { surfacePath, toSkPoints } from './skia/paths';
 import { surfaceEffect, surfaceUniforms } from './skia/shader';
 import { renderAvatarImage } from './skia/draw';
 
 const DEG = Math.PI / 180;
 const ORIGIN = { x: CENTER, y: CENTER };
 const NO_POINTS: SkPoint[] = [];
-const FAR_PAST = -1e12;
 
 interface BaseProps {
-  /** Facet composition (three angles in radians). Default `DEFAULT_SEED`. */
+  /** How the light moves: start angle, drift direction and orbit size (see `Seed`). Default `DEFAULT_SEED`. */
   seed?: Seed;
   /** Palette key (`'pine'`) or any hex colour. Default `'pine'`. */
   color?: PaletteKey | (string & {});
@@ -40,6 +56,8 @@ interface BaseProps {
   /** Duration of the shape morph when the silhouette changes, in ms. 0 disables it. Default 460. */
   morphDuration?: number;
   style?: StyleProp<ViewStyle>;
+  /** Handle for snapshots and restarts. */
+  ref?: Ref<MoodstoneHandle>;
 }
 
 /**
@@ -90,23 +108,24 @@ function resolveEyeColor(c: string | undefined): string {
 /** Build the full spec from props, filling gaps with defaults. */
 export function useAvatarSpec(props: MoodstoneProps): AvatarSpec {
   const { seed, color = 'pine', cut = 'circle', mood = 'idle', eyeColor, shape, tune } = props;
+  // Seeds and shapes usually arrive as fresh literals each render, so the spec is memoised on their contents, not their identity.
   const s0 = seed?.[0];
   const s1 = seed?.[1];
   const s2 = seed?.[2];
-  const resolved = shape ?? (tune ? tunedShape(cut, tune) : undefined);
-  const shapeKey = resolved ? JSON.stringify(resolved) : '';
-  return useMemo(() => {
-    const custom = shapeKey ? (JSON.parse(shapeKey) as Partial<ShapeParams>) : undefined;
-    return {
-      seed: s0 !== undefined && s1 !== undefined && s2 !== undefined ? [s0, s1, s2] : DEFAULT_SEED,
-      color: resolveColor(color),
-      cut,
-      mood,
-      eyeColor: resolveEyeColor(eyeColor),
-      shape: custom,
-      contentScale: custom ? shapeContentScale(custom) : undefined,
-    };
-  }, [s0, s1, s2, color, cut, mood, eyeColor, shapeKey]);
+  const custom = shape ?? (tune ? tunedShape(cut, tune) : undefined);
+  const shapeKey = custom ? JSON.stringify(custom) : '';
+  return useMemo(
+    () =>
+      resolveSpec({
+        seed: s0 !== undefined && s1 !== undefined && s2 !== undefined ? [s0, s1, s2] : DEFAULT_SEED,
+        color: resolveColor(color),
+        cut,
+        mood,
+        eyeColor: resolveEyeColor(eyeColor),
+        shape: shapeKey ? (JSON.parse(shapeKey) as Partial<ShapeParams>) : undefined,
+      }),
+    [s0, s1, s2, color, cut, mood, eyeColor, shapeKey],
+  );
 }
 
 /* ---- scene ---- */
@@ -119,7 +138,14 @@ interface SceneProps {
   style?: StyleProp<ViewStyle>;
 }
 
-function Eye({ frame, index, color }: { frame: SharedValue<Frame>; index: number; color: string }) {
+/** One eye, swirl or sleep mark: which slot of the frame it draws, and in what colour. */
+interface MarkProps {
+  frame: SharedValue<Frame>;
+  index: number;
+  color: string;
+}
+
+function Eye({ frame, index, color }: MarkProps) {
   const rect = useDerivedValue(() => {
     const e = frame.value.eyes[index];
     return { rect: { x: e.cx - e.w / 2, y: e.cy - e.h / 2, width: e.w, height: e.h }, rx: e.r, ry: e.r };
@@ -130,38 +156,24 @@ function Eye({ frame, index, color }: { frame: SharedValue<Frame>; index: number
   return <RoundedRect rect={rect} color={color} opacity={opacity} origin={origin} transform={transform} />;
 }
 
-function SwirlMark({ frame, index, color }: { frame: SharedValue<Frame>; index: number; color: string }) {
+function SwirlMark({ frame, index, color }: MarkProps) {
   const points = useDerivedValue(() => {
     const s = frame.value.swirls[index];
-    if (!s) return NO_POINTS;
-    const flat = swirlPoints(s);
-    const out: SkPoint[] = [];
-    for (let i = 0; i < flat.length; i += 2) out.push({ x: flat[i], y: flat[i + 1] });
-    return out;
+    return s ? toSkPoints(swirlPoints(s)) : NO_POINTS;
   });
   const opacity = useDerivedValue(() => frame.value.swirls[index]?.alpha ?? 0);
   return (
-    <Points points={points} mode="polygon" color={color} style="stroke" strokeWidth={0.85} strokeCap="round" strokeJoin="round" opacity={opacity} />
+    <Points points={points} mode="polygon" color={color} style="stroke" strokeWidth={SWIRL_STROKE} strokeCap="round" strokeJoin="round" opacity={opacity} />
   );
 }
 
-function SleepMark({ frame, index, color }: { frame: SharedValue<Frame>; index: number; color: string }) {
+function SleepMark({ frame, index, color }: MarkProps) {
   const points = useDerivedValue(() => {
     const m = frame.value.sleepMarks[index];
-    if (!m) return NO_POINTS;
-    const s = m.size / 2;
-    return [
-      { x: m.x - s, y: m.y - s },
-      { x: m.x + s, y: m.y - s },
-      { x: m.x - s, y: m.y + s },
-      { x: m.x + s, y: m.y + s },
-    ];
+    return m ? toSkPoints(sleepMarkPoints(m)) : NO_POINTS;
   });
   const opacity = useDerivedValue(() => frame.value.sleepMarks[index]?.alpha ?? 0);
-  const strokeWidth = useDerivedValue(() => {
-    const m = frame.value.sleepMarks[index];
-    return m ? Math.max(0.6, m.size * 0.22) : 0.6;
-  });
+  const strokeWidth = useDerivedValue(() => frame.value.sleepMarks[index]?.strokeWidth ?? 0);
   return (
     <Points points={points} mode="polygon" color={color} style="stroke" strokeWidth={strokeWidth} strokeCap="round" strokeJoin="round" opacity={opacity} />
   );
@@ -201,109 +213,133 @@ function Scene({ frame, surface, eyeColor, size, style }: SceneProps) {
 
 /* ---- frame sources ---- */
 
-interface SourceProps {
+interface StillProps {
   spec: AvatarSpec;
   size: number;
   phase: number;
-  paused: boolean;
-  morphDuration: number;
   style?: StyleProp<ViewStyle>;
+  ref?: Ref<MoodstoneHandle>;
 }
 
-const AnimatedAvatar = forwardRef<MoodstoneHandle, SourceProps>(function AnimatedAvatar(
-  { spec, size, phase, paused, morphDuration, style },
-  ref,
-) {
-  const clock = useClock();
-  const start = useSharedValue(0);
-  const frozen = useSharedValue(0);
-  const offset = phase * loopLength(spec.mood);
+interface AnimatedProps extends StillProps {
+  paused: boolean;
+  morphDuration: number;
+}
 
-  useEffect(() => {
-    // Restart the loop when the mood changes so it begins from its rest pose.
-    start.value = clock.value;
-    frozen.value = 0;
-  }, [spec.mood, clock, start, frozen]);
+/** Render `spec` offscreen: at `opts.phase` when given, else as `current` shows it. */
+function snapshotOf(spec: AvatarSpec, current: Frame, opts: SnapshotOptions = {}): SkImage | null {
+  const frame = opts.phase !== undefined ? computeFrame(spec, opts.phase * loopLength(spec.mood)) : current;
+  return renderAvatarImage(spec, frame, { size: opts.size ?? 1024, background: opts.background });
+}
 
-  useEffect(() => {
-    if (paused) frozen.value = clock.value - start.value;
-    else start.value = clock.value - frozen.value;
-  }, [paused, clock, start, frozen]);
-
-  const frame = useDerivedValue(() => {
-    const ms = paused ? frozen.value : clock.value - start.value;
-    return computeFrame(spec, ms / 1000 + offset);
-  }, [spec, offset, paused]);
-
-  // Shape morph: interpolate between the previous and the new silhouette.
+/** The silhouette path for a spec, rebuilt only when the silhouette changes, not on every new spec. */
+function useSurfacePath(spec: AvatarSpec): SkPath {
   const shapeKey = specShapeKey(spec);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const target = useMemo(() => surfacePath(spec), [shapeKey]);
-  const from = useSharedValue<SkPath>(target);
-  const to = useSharedValue<SkPath>(target);
-  const morphStart = useSharedValue(FAR_PAST);
-  useEffect(() => {
-    if (to.value === target) return;
-    const u = morphDuration > 0 ? clamp((clock.value - morphStart.value) / morphDuration, 0, 1) : 1;
-    from.value = u >= 1 ? to.value : interpolatePaths(easeInOut(u), [0, 1], [from.value, to.value]);
-    to.value = target;
-    morphStart.value = morphDuration > 0 ? clock.value : FAR_PAST;
-  }, [target, morphDuration, clock, from, to, morphStart]);
-  const surface = useDerivedValue(() => {
-    const u = morphDuration > 0 ? clamp((clock.value - morphStart.value) / morphDuration, 0, 1) : 1;
-    if (u >= 1) return to.value;
-    return interpolatePaths(easeInOut(u), [0, 1], [from.value, to.value]);
-  }, [morphDuration]);
+  return useMemo(() => surfacePath(spec), [shapeKey]);
+}
 
+/**
+ * Milliseconds of loop played since the mood last changed or restarted.
+ * It only advances while playing: pausing stops the frame callback, so a
+ * paused avatar neither recomputes nor redraws.
+ */
+function useLoopTime(mood: Mood, paused: boolean): SharedValue<number> {
+  const elapsed = useSharedValue(0);
+  const ticker = useFrameCallback(({ timeSincePreviousFrame }) => {
+    'worklet';
+    // Null on the first frame after starting or resuming.
+    if (timeSincePreviousFrame) elapsed.value += timeSincePreviousFrame;
+  }, !paused);
+  useEffect(() => {
+    ticker.setActive(!paused);
+  }, [paused, ticker]);
+  useEffect(() => {
+    // Each mood starts from its rest pose.
+    elapsed.value = 0;
+  }, [mood, elapsed]);
+  return elapsed;
+}
+
+/** Eased blend between two outlines with the same point count. */
+function blendPaths(from: SkPath, to: SkPath, u: number): SkPath {
+  'worklet';
+  return interpolatePaths(easeInOut(u), [0, 1], [from, to]);
+}
+
+/**
+ * The silhouette, morphing over `morphDuration` ms whenever it changes.
+ * A morph interrupted by another starts from wherever the outline is.
+ */
+function useSurfaceMorph(spec: AvatarSpec, morphDuration: number): SharedValue<SkPath> {
+  const target = useSurfacePath(spec);
+  const shown = useRef(target);
+  const from = useSharedValue(target);
+  const to = useSharedValue(target);
+  const progress = useSharedValue(1); // 0..1 through the morph from `from` to `to`, 1 once settled
+  useEffect(() => {
+    if (shown.current === target) return;
+    shown.current = target;
+    const u = progress.value;
+    from.value = u >= 1 ? to.value : blendPaths(from.value, to.value, u);
+    to.value = target;
+    if (morphDuration > 0) {
+      progress.value = 0;
+      progress.value = withTiming(1, { duration: morphDuration, easing: Easing.linear });
+    } else {
+      progress.value = 1;
+    }
+  }, [target, morphDuration, from, to, progress]);
+  return useDerivedValue(() => (progress.value >= 1 ? to.value : blendPaths(from.value, to.value, progress.value)));
+}
+
+function AnimatedAvatar({ spec, size, phase, paused, morphDuration, style, ref }: AnimatedProps) {
+  const elapsed = useLoopTime(spec.mood, paused);
+  const offset = phase * loopLength(spec.mood);
+  const frame = useDerivedValue(() => computeFrame(spec, elapsed.value / 1000 + offset), [spec, offset]);
+  const surface = useSurfaceMorph(spec, morphDuration);
   useImperativeHandle(
     ref,
     () => ({
-      snapshot: (opts) => {
-        const fr = opts?.phase !== undefined ? computeFrame(spec, opts.phase * loopLength(spec.mood)) : frame.value;
-        return renderAvatarImage(spec, fr, { size: opts?.size ?? 1024, background: opts?.background });
-      },
+      snapshot: (opts) => snapshotOf(spec, frame.value, opts),
       restart: () => {
-        start.value = clock.value;
-        frozen.value = 0;
+        elapsed.value = 0;
       },
       getSpec: () => spec,
     }),
-    [spec, frame, clock, start, frozen],
+    [spec, frame, elapsed],
   );
-
   return <Scene frame={frame} surface={surface} eyeColor={spec.eyeColor} size={size} style={style} />;
-});
+}
 
-const StillAvatar = forwardRef<MoodstoneHandle, SourceProps>(function StillAvatar({ spec, size, phase, style }, ref) {
-  const t = phase * loopLength(spec.mood);
-  const frame = useSharedValue<Frame>(computeFrame(spec, t));
-  const surface = useSharedValue<SkPath>(surfacePath(spec));
+function StillAvatar({ spec, size, phase, style, ref }: StillProps) {
+  const still = useMemo(() => computeFrame(spec, phase * loopLength(spec.mood)), [spec, phase]);
+  const path = useSurfacePath(spec);
+  const frame = useSharedValue(still);
+  const surface = useSharedValue(path);
   useEffect(() => {
-    frame.value = computeFrame(spec, t);
-    surface.value = surfacePath(spec);
-  }, [spec, t, frame, surface]);
+    frame.value = still;
+    surface.value = path;
+  }, [still, path, frame, surface]);
   useImperativeHandle(
     ref,
     () => ({
-      snapshot: (opts) => {
-        const fr = opts?.phase !== undefined ? computeFrame(spec, opts.phase * loopLength(spec.mood)) : frame.value;
-        return renderAvatarImage(spec, fr, { size: opts?.size ?? 1024, background: opts?.background });
-      },
+      snapshot: (opts) => snapshotOf(spec, still, opts),
       restart: () => {},
       getSpec: () => spec,
     }),
-    [spec, frame],
+    [spec, still],
   );
   return <Scene frame={frame} surface={surface} eyeColor={spec.eyeColor} size={size} style={style} />;
-});
+}
 
 /** An animated agent avatar rendered with Skia. */
-export const Moodstone = forwardRef<MoodstoneHandle, MoodstoneProps>(function Moodstone(props, ref) {
-  const { size = 64, animated = true, paused = false, phase = 0, morphDuration = 460, style } = props;
+export function Moodstone(props: MoodstoneProps) {
+  const { size = 64, animated = true, paused = false, phase = 0, morphDuration = 460, style, ref } = props;
   const spec = useAvatarSpec(props);
   return animated ? (
     <AnimatedAvatar ref={ref} spec={spec} size={size} phase={phase} paused={paused} morphDuration={morphDuration} style={style} />
   ) : (
-    <StillAvatar ref={ref} spec={spec} size={size} phase={phase} paused={paused} morphDuration={0} style={style} />
+    <StillAvatar ref={ref} spec={spec} size={size} phase={phase} style={style} />
   );
-});
+}

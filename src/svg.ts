@@ -1,15 +1,20 @@
-import type { AvatarSpec, Frame } from './core/types';
-import { BOX, CENTER, GRAIN, LIGHT_REACH, specPoints, specShapeKey } from './core/geometry';
+import type { AvatarSpec, Frame, SleepMark } from './core/types';
+import { BOX, CENTER, GRAIN, LIGHT_REACH, resolveSpec, specPoints, specShapeKey } from './core/geometry';
 import { pointsToPathD } from './core/shape';
-import { computeFrame, swirlPoints } from './core/frame';
+import { SWIRL_STROKE, computeFrame, sleepMarkPoints, swirlPoints } from './core/frame';
 import { loopLength } from './core/moods';
 import { clamp } from './core/math';
 
+/** A coordinate to two decimals, without trailing zeros or a negative zero. */
 const f = (n: number) => {
   const v = +n.toFixed(2);
   return Object.is(v, -0) ? '0' : String(v);
 };
+/** A keyTime needs more precision than a coordinate: at 240 samples, neighbours are only 0.004 apart. */
+const keyTime = (u: number) => String(+u.toFixed(5));
 const RAD2DEG = 180 / Math.PI;
+/** Stand-in for a sleep mark missing from a frame: invisible, at the centre. */
+const NO_MARK: SleepMark = { x: CENTER, y: CENTER, size: 0, strokeWidth: 0.6, alpha: 0 };
 
 const cutClip = (spec: AvatarSpec) => `<path d="${pointsToPathD(specPoints(spec))}"/>`;
 
@@ -36,11 +41,6 @@ function polylineD(flat: number[]): string {
   return d;
 }
 
-function zD(x: number, y: number, size: number): string {
-  const s = size / 2;
-  return polylineD([x - s, y - s, x + s, y - s, x - s, y + s, x + s, y + s]);
-}
-
 export interface SvgOptions {
   /** Output width/height in px. Default 240. */
   size?: number;
@@ -51,6 +51,7 @@ export interface SvgOptions {
 /**
  * Render a single frame as a static SVG string. The surface is a radial
  * two-hue gradient from the light position plus feTurbulence grain.
+ * Compute `frame` from a resolved spec (see `resolveSpec`) so a custom shape's face fits it.
  */
 export function renderAvatarSvg(spec: AvatarSpec, frame: Frame, opts: SvgOptions = {}): string {
   const size = opts.size ?? 240;
@@ -73,13 +74,13 @@ export function renderAvatarSvg(spec: AvatarSpec, frame: Frame, opts: SvgOptions
   const swirls = frame.swirls
     .map(
       (sw) =>
-        `<path d="${polylineD(swirlPoints(sw))}" fill="none" stroke="${spec.eyeColor}" stroke-width="0.85" stroke-linecap="round" stroke-linejoin="round" opacity="${f(sw.alpha)}"/>`,
+        `<path d="${polylineD(swirlPoints(sw))}" fill="none" stroke="${spec.eyeColor}" stroke-width="${SWIRL_STROKE}" stroke-linecap="round" stroke-linejoin="round" opacity="${f(sw.alpha)}"/>`,
     )
     .join('');
   const zs = frame.sleepMarks
     .map(
       (m) =>
-        `<path d="${zD(m.x, m.y, m.size)}" fill="none" stroke="${spec.eyeColor}" stroke-width="${f(Math.max(0.6, m.size * 0.22))}" stroke-linecap="round" stroke-linejoin="round" opacity="${f(m.alpha)}"/>`,
+        `<path d="${polylineD(sleepMarkPoints(m))}" fill="none" stroke="${spec.eyeColor}" stroke-width="${f(m.strokeWidth)}" stroke-linecap="round" stroke-linejoin="round" opacity="${f(m.alpha)}"/>`,
     )
     .join('');
   const bg = opts.background ? `<rect width="${BOX}" height="${BOX}" fill="${opts.background}"/>` : '';
@@ -109,12 +110,13 @@ export interface AnimatedSvgOptions extends SvgOptions {
  * seamless because the last sample equals the first.
  */
 export function renderAnimatedAvatarSvg(spec: AvatarSpec, opts: AnimatedSvgOptions = {}): string {
+  spec = resolveSpec(spec); // a custom shape needs its face scale before any frame is sampled
   const size = opts.size ?? 240;
   const L = loopLength(spec.mood);
   const N = clamp(Math.round(L * (opts.fps ?? 24)), 24, 240);
   const frames: Frame[] = [];
   for (let i = 0; i <= N; i++) frames.push(computeFrame(spec, (i / N) * L));
-  const keyTimes = frames.map((_, i) => f(i / N)).join(';');
+  const keyTimes = frames.map((_, i) => keyTime(i / N)).join(';');
   const dur = `${f(L)}s`;
   const anim = (name: string, values: string[]) =>
     `<animate attributeName="${name}" values="${values.join(';')}" keyTimes="${keyTimes}" dur="${dur}" repeatCount="indefinite"/>`;
@@ -184,7 +186,7 @@ export function renderAnimatedAvatarSvg(spec: AvatarSpec, opts: AnimatedSvgOptio
         return polylineD(swirlPoints({ cx: e.cx, cy: e.cy, radius: 0, dir: j === 0 ? -1 : 1, grow: 0, rot: 0, alpha: 0 }));
       });
       const alphas = frames.map((fr) => fr.swirls[j]?.alpha ?? 0);
-      swirls += `<path d="${ds[0]}" fill="none" stroke="${spec.eyeColor}" stroke-width="0.85" stroke-linecap="round" stroke-linejoin="round" opacity="0">${anim('d', ds)}${anim('opacity', alphas.map(f))}</path>`;
+      swirls += `<path d="${ds[0]}" fill="none" stroke="${spec.eyeColor}" stroke-width="${SWIRL_STROKE}" stroke-linecap="round" stroke-linejoin="round" opacity="0">${anim('d', ds)}${anim('opacity', alphas.map(f))}</path>`;
     }
   }
 
@@ -192,10 +194,10 @@ export function renderAnimatedAvatarSvg(spec: AvatarSpec, opts: AnimatedSvgOptio
   let zs = '';
   if (frames.some((fr) => fr.sleepMarks.length > 0)) {
     for (let j = 0; j < 3; j++) {
-      const ms = frames.map((fr) => fr.sleepMarks[j]);
-      const ds = ms.map((m) => (m ? zD(m.x, m.y, m.size) : zD(CENTER, CENTER, 0)));
-      const alphas = ms.map((m) => (m ? m.alpha : 0));
-      const widths = ms.map((m) => (m ? Math.max(0.6, m.size * 0.22) : 0.6));
+      const ms = frames.map((fr) => fr.sleepMarks[j] ?? NO_MARK);
+      const ds = ms.map((m) => polylineD(sleepMarkPoints(m)));
+      const alphas = ms.map((m) => m.alpha);
+      const widths = ms.map((m) => m.strokeWidth);
       zs += `<path d="${ds[0]}" fill="none" stroke="${spec.eyeColor}" stroke-width="${f(widths[0])}" stroke-linecap="round" stroke-linejoin="round" opacity="0">${anim('d', ds)}${anim('opacity', alphas.map(f))}${anim('stroke-width', widths.map(f))}</path>`;
     }
   }

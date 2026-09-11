@@ -11,10 +11,12 @@
     "strict": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "noEmit": true,
+    "rootDir": ".",
     "types": [],
     "paths": {
       "moodstone": [
@@ -35,6 +37,5 @@
     "node_modules",
     "lib",
     "example"
-  ],
-  "extends": "expo/tsconfig.base"
+  ]
 }

@@ -1,6 +1,6 @@
 import { Skia } from '@shopify/react-native-skia';
-import type { SkPath } from '@shopify/react-native-skia';
-import { CUTS, specPoints, specShapeKey } from '../core';
+import type { SkPath, SkPoint } from '@shopify/react-native-skia';
+import { CUTS, specPoints } from '../core';
 import type { AvatarSpec, Cut } from '../core';
 
 /** Closed polyline path from flat [x, y, …] points. Every outline has the same segment count, so they interpolate. */
@@ -12,15 +12,23 @@ export function outlinePath(points: number[]): SkPath {
   return b.build();
 }
 
-const cutCache = new Map<string, SkPath>();
+/** Skia points from a flat [x0, y0, x1, y1, …] list. */
+export function toSkPoints(flat: number[]): SkPoint[] {
+  'worklet';
+  const out: SkPoint[] = [];
+  for (let i = 0; i < flat.length; i += 2) out.push({ x: flat[i], y: flat[i + 1] });
+  return out;
+}
 
-/** Silhouette path for a preset cut, cached. */
+const cutPaths = new Map<Cut, SkPath>();
+
+/** Silhouette path for a preset cut, built once and cached. */
 export function cutPath(cut: Cut): SkPath {
-  const key = 'cut:' + cut;
-  const hit = cutCache.get(key);
-  if (hit) return hit;
-  const path = outlinePath(CUTS[cut].points);
-  cutCache.set(key, path);
+  let path = cutPaths.get(cut);
+  if (!path) {
+    path = outlinePath(CUTS[cut].points);
+    cutPaths.set(cut, path);
+  }
   return path;
 }
 

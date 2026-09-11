@@ -8,10 +8,12 @@ import {
   CUT_KEYS,
   CUT_TUNES,
   MOODS,
+  MOOD_KEYS,
   Moodstone,
   PALETTE,
   PALETTE_KEYS,
   SHAPE_DEFAULTS,
+  isPaletteKey,
   loopLength,
   randomSeed,
   type Cut,
@@ -27,7 +29,7 @@ import {
 /* ---------- knobs ---------- */
 
 const pick = <T,>(a: readonly T[]): T => a[Math.floor(Math.random() * a.length)];
-const MOOD_SET = new Set<string>(MOODS.map((m) => m.key));
+const MOOD_SET = new Set<string>(MOOD_KEYS);
 const CUT_SET = new Set<string>(CUT_KEYS);
 
 interface Knob {
@@ -123,7 +125,7 @@ function Studio() {
   };
 
   useEffect(() => {
-    if (params.color && params.color in PALETTE) setColor(params.color as PaletteKey);
+    if (params.color && isPaletteKey(params.color)) setColor(params.color);
     if (params.cut && CUT_SET.has(params.cut)) chooseCut(params.cut as Cut);
     if (params.mood && MOOD_SET.has(params.mood)) setMood(params.mood as Mood);
     if (params.eyes === 'white' || params.eyes === 'black') setEyes(params.eyes);
