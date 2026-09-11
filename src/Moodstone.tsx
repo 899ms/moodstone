@@ -347,7 +347,7 @@ function useLoopTime(mood: Mood, paused: boolean): SharedValue<number> {
   }, [paused, ticker]);
   useEffect(() => {
     // Each mood starts from its rest pose.
-    elapsed.value = 0;
+    elapsed.set(0);
   }, [mood, elapsed]);
   return elapsed;
 }
