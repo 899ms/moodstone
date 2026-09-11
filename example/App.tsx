@@ -146,13 +146,12 @@ function Studio() {
 
       {/* header */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: c.text }]}>Moodstone</Text>
-        <View style={{ flex: 1 }} />
         <Pressable onPress={() => setTheme(dark ? 'light' : 'dark')} style={[styles.iconButton, { backgroundColor: c.chip }]}>
           <Text style={[styles.icon, { color: c.muted }]}>{dark ? '☾' : '☀'}</Text>
         </Pressable>
-        <Pressable onPress={randomise} style={[styles.pill, { backgroundColor: activeColor }]}>
-          <Text style={styles.pillText}>Randomise</Text>
+        <Text style={[styles.title, { color: c.text }]}>Moodstone</Text>
+        <Pressable onPress={randomise} accessibilityLabel="Randomise" style={[styles.iconButton, { backgroundColor: c.chip }]}>
+          <Text style={[styles.icon, styles.dieIcon, { color: c.muted }]}>⚄</Text>
         </Pressable>
       </View>
 
@@ -252,11 +251,11 @@ const LIGHT = { bg: '#f3f4f5', panel: '#ffffff', chip: '#e6eaec', track: '#d3d9d
 const styles = StyleSheet.create({
   root: { flex: 1, paddingHorizontal: 14 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 40 },
-  title: { fontSize: 15, fontWeight: '700', letterSpacing: 0.2 },
+  title: { flex: 1, textAlign: 'center', fontSize: 15, fontWeight: '700', letterSpacing: 0.2 },
   iconButton: { width: 32, height: 32, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   icon: { fontSize: 13, fontWeight: '700' },
-  pill: { height: 32, borderRadius: 9, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
-  pillText: { color: '#0b0e10', fontWeight: '700', fontSize: 13 },
+  // The die glyph renders much smaller than the moon at the same font size.
+  dieIcon: { fontSize: 19 },
   stage: { borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginTop: 6, marginBottom: 8 },
   controls: { paddingTop: 14, paddingBottom: 40, gap: 22 },
   section: { gap: 10 },
