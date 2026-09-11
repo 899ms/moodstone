@@ -3,6 +3,7 @@ export * from './math';
 export * from './color';
 export * from './seed';
 export * from './geometry';
+export * from './shape';
 export * from './palette';
 export * from './moods';
 export * from './frame';

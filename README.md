@@ -13,7 +13,7 @@ import { AgentAvatar } from 'react-native-agent-avatar';
 - **Deterministic identity.** The name hashes to a colour, a cut and a lighting composition (where the light starts, which way it drifts), so `Nova` looks the same on every device. Override any of them.
 - **Lit surface.** The body is a two-hue gradient from a light source that slowly orbits, with a soft highlight and a per-pixel grain, all in one Skia runtime shader. Highlights lean warm, shadows lean cool.
 - **Nine moods**, each a seamless loop: `idle`, `observing`, `thinking`, `processing`, `working`, `done`, `failed`, `invalid`, `inactive`.
-- **Five cuts** (silhouettes): `rounded`, `badge`, `diamond`, `flower`, `burst`. Changing the cut morphs the shape.
+- **Seven cuts** (silhouettes) from one polar shape engine: `circle`, `squircle`, `square`, `diamond`, `hexagon`, `badge`, `burst`. Changing the cut morphs the shape, and the eyes fit themselves to the silhouette automatically.
 - **Twelve palette colours**, or any hex. White or black eyes.
 - **UI-thread animation.** One pure function, `computeFrame(spec, t)`, describes every frame. Skia reads it through Reanimated derived values, so the JS thread stays idle. Pause, restart, or offset the loop.
 - **Exports.** PNG at any size through a ref, a still SVG, and a self-contained animated SVG of the whole loop.
@@ -36,7 +36,8 @@ Peer dependencies: React 19+, React Native 0.78+, Skia 2+, Reanimated 4+. In Exp
 | `name` | `string` | `'Agent'` | Seeds colour, cut and facets. |
 | `mood` | `Mood` | `'idle'` | See the list above. Changing it restarts the loop from its rest pose. |
 | `color` | palette key or hex | from name | `'pine'`, `'#1F8A70'`. |
-| `cut` | `Cut` | from name | Silhouette. Changing it morphs. |
+| `cut` | `Cut` | from name | Silhouette preset. Changing it morphs. |
+| `shape` | `Partial<ShapeParams>` | | Custom silhouette from the shape engine, overriding the cut: `{ n: 4.5 }`, `{ lobes: 12, depth: 0.11, sharp: 1.6 }`, `{ sides: 6, round: 0.3 }`. Changes morph too. |
 | `eyeColor` | `'white' \| 'black' \| hex` | `'white'` | |
 | `seed` | `[number, number, number]` | from name | Light start angle, drift direction and orbit radius. |
 | `size` | `number` | `64` | dp. |
@@ -92,7 +93,7 @@ Each `AgentAvatar` is its own Skia canvas with its own clock. A handful of anima
 ## Core API
 
 ```ts
-import { computeFrame, identityFromName, seedFromName, loopLength, MOODS, CUTS, PALETTE } from 'react-native-agent-avatar/core';
+import { computeFrame, identityFromName, seedFromName, loopLength, MOODS, CUTS, PALETTE, shapeRadii } from 'react-native-agent-avatar/core';
 
 const spec = { ...identityFromName('Nova'), mood: 'done', eyeColor: '#FFFFFF' };
 const frame = computeFrame(spec, 1.25); // plain numbers: eyes, tilt, light position, lit/shade hues, swirls, sleep marks
@@ -100,14 +101,14 @@ const frame = computeFrame(spec, 1.25); // plain numbers: eyes, tilt, light posi
 
 ## Example app
 
-`example/` is an Expo app with a Studio (name, colour, cut, eyes, mood, play/pause, restart, randomise, export panel) and a Wall of every cut × mood. It also accepts deep-link parameters so it can be driven from a script:
+`example/` is an Expo app with a single-screen Studio: name, colour, cut, mood, eye colour, shape tuning sliders for the selected cut's family, loop scrubbing with play/pause/restart, size and a morph toggle. It also accepts deep-link parameters so it can be driven from a script:
 
 ```bash
 cd example && npx expo start --ios
-xcrun simctl openurl booted "exp://<host>:8081/--/?tab=studio&mood=failed&still=0.6&cut=burst"
+xcrun simctl openurl booted "exp://<host>:8081/--/?mood=failed&still=0.6&cut=burst&lobes=9"
 ```
 
-Parameters: `tab`, `name`, `color`, `cut`, `mood`, `eyes`, `paused`, `bg`, `morph`, `still`, `export` (`png`, `svg`, `asvg`), `restart`, `scroll` (`top`, `end`), `shuffle`, `theme`.
+Parameters: `name`, `color`, `cut`, `mood`, `eyes`, `paused`, `still` (0..1), `morph`, `size`, `theme`, `restart`, and any shape knob (`n`, `ax`, `rot`, `lobes`, `depth`, `sharp`, `sides`, `round`).
 
 ## Development
 

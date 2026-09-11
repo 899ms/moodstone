@@ -224,7 +224,7 @@ export function computeFrame(spec: AvatarSpec, t: number): Frame {
   const tl = ((t % L) + L) % L;
   const p = wrap01(tl / cycle);
   const cutDef = CUTS[spec.cut];
-  const cs = cutDef.contentScale;
+  const cs = spec.contentScale !== undefined ? spec.contentScale : cutDef.contentScale;
   const lift = cutDef.eyeLift;
   const base = spec.seed;
 

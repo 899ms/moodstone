@@ -5,9 +5,9 @@ import { Canvas, Group, Path, Points, RoundedRect, Shader, interpolatePaths, use
 import type { SkImage, SkPath, SkPoint } from '@shopify/react-native-skia';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
-import { BOX, CENTER, EYE_BLACK, EYE_WHITE, clamp, computeFrame, easeInOut, identityFromName, loopLength, resolveColor, swirlPoints } from './core';
-import type { AvatarSpec, Cut, Frame, Mood, PaletteKey, Seed } from './core';
-import { cutPath } from './skia/paths';
+import { BOX, CENTER, EYE_BLACK, EYE_WHITE, clamp, computeFrame, easeInOut, identityFromName, loopLength, resolveColor, shapeContentScale, specShapeKey, swirlPoints } from './core';
+import type { AvatarSpec, Cut, Frame, Mood, PaletteKey, Seed, ShapeParams } from './core';
+import { surfacePath } from './skia/paths';
 import { surfaceEffect, surfaceUniforms } from './skia/shader';
 import { renderAvatarImage } from './skia/draw';
 
@@ -28,6 +28,12 @@ export interface AgentAvatarProps {
   color?: PaletteKey | (string & {});
   /** Surface silhouette. Defaults to one picked from the name. Changing it morphs the shape. */
   cut?: Cut;
+  /**
+   * Custom silhouette from the shape engine, overriding `cut`'s geometry:
+   * `{ n: 4.5 }` squircle, `{ lobes: 12, depth: 0.11, sharp: 1.6 }` burst,
+   * `{ sides: 6, round: 0.3 }` hexagon. Changes morph like a cut change.
+   */
+  shape?: Partial<ShapeParams>;
   /** Animation state. Default `'idle'`. */
   mood?: Mood;
   /** `'white'`, `'black'` or a hex colour. Default white. */
@@ -75,20 +81,24 @@ function resolveEyeColor(c: string | undefined): string {
 
 /** Build the full spec from props, filling gaps from the name. */
 export function useAvatarSpec(props: AgentAvatarProps): AvatarSpec {
-  const { name = 'Agent', seed, color, cut, mood = 'idle', eyeColor } = props;
+  const { name = 'Agent', seed, color, cut, mood = 'idle', eyeColor, shape } = props;
   const s0 = seed?.[0];
   const s1 = seed?.[1];
   const s2 = seed?.[2];
+  const shapeKey = shape ? JSON.stringify(shape) : '';
   return useMemo(() => {
     const id = identityFromName(name);
+    const custom = shapeKey ? (JSON.parse(shapeKey) as Partial<ShapeParams>) : undefined;
     return {
       seed: s0 !== undefined && s1 !== undefined && s2 !== undefined ? [s0, s1, s2] : id.seed,
       color: resolveColor(color ?? id.color),
       cut: cut ?? id.cut,
       mood,
       eyeColor: resolveEyeColor(eyeColor),
+      shape: custom,
+      contentScale: custom ? shapeContentScale(custom) : undefined,
     };
-  }, [name, s0, s1, s2, color, cut, mood, eyeColor]);
+  }, [name, s0, s1, s2, color, cut, mood, eyeColor, shapeKey]);
 }
 
 /* ---- scene ---- */
@@ -218,7 +228,9 @@ const AnimatedAvatar = forwardRef<AgentAvatarHandle, SourceProps>(function Anima
   }, [spec, offset, paused]);
 
   // Shape morph: interpolate between the previous and the new silhouette.
-  const target = useMemo(() => cutPath(spec.cut), [spec.cut]);
+  const shapeKey = specShapeKey(spec);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const target = useMemo(() => surfacePath(spec), [shapeKey]);
   const from = useSharedValue<SkPath>(target);
   const to = useSharedValue<SkPath>(target);
   const morphStart = useSharedValue(FAR_PAST);
@@ -257,10 +269,10 @@ const AnimatedAvatar = forwardRef<AgentAvatarHandle, SourceProps>(function Anima
 const StillAvatar = forwardRef<AgentAvatarHandle, SourceProps>(function StillAvatar({ spec, size, phase, style }, ref) {
   const t = phase * loopLength(spec.mood);
   const frame = useSharedValue<Frame>(computeFrame(spec, t));
-  const surface = useSharedValue<SkPath>(cutPath(spec.cut));
+  const surface = useSharedValue<SkPath>(surfacePath(spec));
   useEffect(() => {
     frame.value = computeFrame(spec, t);
-    surface.value = cutPath(spec.cut);
+    surface.value = surfacePath(spec);
   }, [spec, t, frame, surface]);
   useImperativeHandle(
     ref,

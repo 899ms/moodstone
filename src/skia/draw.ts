@@ -2,7 +2,7 @@ import { PaintStyle, PointMode, Skia, StrokeCap, StrokeJoin, drawAsImageFromPict
 import type { SkCanvas, SkImage, SkPoint } from '@shopify/react-native-skia';
 import { BOX, CENTER, swirlPoints } from '../core';
 import type { AvatarSpec, Frame } from '../core';
-import { cutPath } from './paths';
+import { surfacePath } from './paths';
 import { makeSurfaceShader } from './shader';
 
 const RAD2DEG = 180 / Math.PI;
@@ -31,7 +31,7 @@ export function drawAvatarSkia(canvas: SkCanvas, spec: AvatarSpec, frame: Frame,
   const fill = Skia.Paint();
   fill.setAntiAlias(true);
   fill.setShader(makeSurfaceShader(frame, s));
-  canvas.drawPath(cutPath(spec.cut), fill);
+  canvas.drawPath(surfacePath(spec), fill);
 
   // Eyes.
   const eye = Skia.Paint();

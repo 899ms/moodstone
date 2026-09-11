@@ -81,14 +81,14 @@ describe('computeFrame', () => {
   }
 
   test('done cycles colour and returns to base', () => {
-    const spec = specFor('rounded', 'done');
+    const spec = specFor('squircle', 'done');
     expect(computeFrame(spec, 0).color).toBe('#1F8A70');
     expect(computeFrame(spec, 1.0).color).not.toBe('#1F8A70');
     expect(computeFrame(spec, 3.0).color).toBe('#1F8A70');
   });
 
   test('failed produces swirls mid-loop only', () => {
-    const spec = specFor('rounded', 'failed');
+    const spec = specFor('squircle', 'failed');
     expect(computeFrame(spec, 0.2).swirls.length).toBe(0);
     expect(computeFrame(spec, 3.3).swirls.length).toBe(2);
     expect(computeFrame(spec, 5.0).swirls.length).toBe(0);

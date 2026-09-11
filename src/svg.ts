@@ -1,5 +1,6 @@
 import type { AvatarSpec, Frame } from './core/types';
-import { BOX, CENTER, CUTS, GRAIN, LIGHT_REACH } from './core/geometry';
+import { BOX, CENTER, GRAIN, LIGHT_REACH, specPoints } from './core/geometry';
+import { pointsToPathD } from './core/shape';
 import { computeFrame, swirlPoints } from './core/frame';
 import { loopLength } from './core/moods';
 import { clamp } from './core/math';
@@ -10,14 +11,7 @@ const f = (n: number) => {
 };
 const RAD2DEG = 180 / Math.PI;
 
-function cutRects(spec: AvatarSpec, attrs: string): string {
-  return CUTS[spec.cut].parts
-    .map(
-      (p) =>
-        `<rect x="${f(CENTER - p.w / 2)}" y="${f(CENTER - p.h / 2)}" width="${f(p.w)}" height="${f(p.h)}" rx="${f(p.r)}" transform="rotate(${f(p.rot)} ${CENTER} ${CENTER})"${attrs}/>`,
-    )
-    .join('');
-}
+const cutClip = (spec: AvatarSpec) => `<path d="${pointsToPathD(specPoints(spec))}"/>`;
 
 /** Static grain: fractal noise in overlay mode at low opacity. */
 const GRAIN_FILTER = `<filter id="agent-avatar-grain" x="0" y="0" width="1" height="1"><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch" result="n"/><feColorMatrix in="n" type="saturate" values="0"/></filter>`;
@@ -78,7 +72,7 @@ export function renderAvatarSvg(spec: AvatarSpec, frame: Frame, opts: SvgOptions
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${BOX} ${BOX}">` +
     bg +
-    `<defs><clipPath id="${clipId}">${cutRects(spec, '')}</clipPath>${gradient}${highlight}${GRAIN_FILTER}</defs>` +
+    `<defs><clipPath id="${clipId}">${cutClip(spec)}</clipPath>${gradient}${highlight}${GRAIN_FILTER}</defs>` +
     `<g transform="${body}">` +
     `<g clip-path="url(#${clipId})"><rect width="${BOX}" height="${BOX}" fill="url(#${gradId})"/><rect width="${BOX}" height="${BOX}" fill="url(#${gradId}-hi)"/>${grainRect()}</g>` +
     eyes +
@@ -193,7 +187,7 @@ export function renderAnimatedAvatarSvg(spec: AvatarSpec, opts: AnimatedSvgOptio
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${BOX} ${BOX}">` +
     bg +
-    `<defs><clipPath id="${clipId}">${cutRects(spec, '')}</clipPath>${gradient}${highlight}${GRAIN_FILTER}</defs>` +
+    `<defs><clipPath id="${clipId}">${cutClip(spec)}</clipPath>${gradient}${highlight}${GRAIN_FILTER}</defs>` +
     `<g>${translateAnim}<g>${rotateAnim}` +
     `<g clip-path="url(#${clipId})">${surface}</g>` +
     eyes +

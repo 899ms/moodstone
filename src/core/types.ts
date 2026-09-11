@@ -1,5 +1,7 @@
+import type { ShapeParams } from './shape';
+
 /** Surface silhouette of the avatar. */
-export type Cut = 'rounded' | 'badge' | 'diamond' | 'flower' | 'burst';
+export type Cut = 'circle' | 'squircle' | 'square' | 'diamond' | 'hexagon' | 'badge' | 'burst';
 
 /** Animation state. Each mood is a seamless loop. */
 export type Mood =
@@ -25,6 +27,10 @@ export interface AvatarSpec {
   mood: Mood;
   /** Eye colour, hex. */
   eyeColor: string;
+  /** Optional custom silhouette from the shape engine; overrides the cut's geometry. */
+  shape?: Partial<ShapeParams>;
+  /** Face scale for a custom shape. Computed from the shape when omitted. */
+  contentScale?: number;
 }
 
 /** One eye (or eye-derived dot) in the 64×64 box. Centre-based so it can rotate. */

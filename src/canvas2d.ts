@@ -1,5 +1,5 @@
-import type { AvatarSpec, Cut, Frame, SleepMark } from './core/types';
-import { BOX, CENTER, CUTS, GRAIN, LIGHT_REACH } from './core/geometry';
+import type { AvatarSpec, Frame, SleepMark } from './core/types';
+import { BOX, CENTER, GRAIN, LIGHT_REACH, specPoints, specShapeKey } from './core/geometry';
 import { swirlPoints } from './core/frame';
 
 /**
@@ -18,7 +18,7 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
-const surfaceCache = new Map<Cut, Path2D>();
+const surfaceCache = new Map<string, Path2D>();
 
 let grainTile: HTMLCanvasElement | null = null;
 /** A 256px tile of grey noise, drawn as a repeating pattern in overlay mode. */
@@ -41,24 +41,16 @@ function grainPattern(ctx: CanvasRenderingContext2D, pixelsPerUnit: number): Can
 }
 
 /** Silhouette as a Path2D in box coordinates. */
-export function surfacePath2D(cut: Cut): Path2D {
-  const hit = surfaceCache.get(cut);
+export function surfacePath2D(spec: Pick<AvatarSpec, 'cut' | 'shape'>): Path2D {
+  const key = specShapeKey(spec);
+  const hit = surfaceCache.get(key);
   if (hit) return hit;
+  const pts = specPoints(spec);
   const path = new Path2D();
-  for (const part of CUTS[cut].parts) {
-    const sub = new Path2D();
-    const hw = part.w / 2;
-    const hh = part.h / 2;
-    const r = part.r;
-    sub.moveTo(-hw + r, -hh);
-    sub.arcTo(hw, -hh, hw, hh, r);
-    sub.arcTo(hw, hh, -hw, hh, r);
-    sub.arcTo(-hw, hh, -hw, -hh, r);
-    sub.arcTo(-hw, -hh, hw, -hh, r);
-    sub.closePath();
-    path.addPath(sub, new DOMMatrix().translateSelf(CENTER, CENTER).rotateSelf(part.rot));
-  }
-  surfaceCache.set(cut, path);
+  path.moveTo(pts[0], pts[1]);
+  for (let i = 2; i < pts.length; i += 2) path.lineTo(pts[i], pts[i + 1]);
+  path.closePath();
+  if (!spec.shape) surfaceCache.set(key, path);
   return path;
 }
 
@@ -105,7 +97,7 @@ export function drawAvatar(ctx: CanvasRenderingContext2D, spec: AvatarSpec, fram
 
   // Surface: radial two-hue gradient from the light, plus grain, clipped to the silhouette.
   ctx.save();
-  ctx.clip(surfacePath2D(spec.cut));
+  ctx.clip(surfacePath2D(spec));
   const [lx, ly] = frame.light;
   const grad = ctx.createRadialGradient(lx, ly, 0, lx, ly, LIGHT_REACH);
   grad.addColorStop(0, frame.lit);
