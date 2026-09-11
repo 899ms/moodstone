@@ -30,6 +30,7 @@ import {
   resolveSpec,
   sleepMarkPoints,
   specShapeKey,
+  stillFrame,
   SWIRL_STROKE,
   swirlPoints,
   tunedShape,
@@ -75,7 +76,8 @@ interface BaseProps {
   paused?: boolean;
   /**
    * 0..1 position within the mood's loop. For still avatars this picks the
-   * frame; for animated ones it offsets the start so a wall of avatars
+   * frame; without it they show the mood's key pose (`stillFrame`). For
+   * animated ones it offsets the start (default 0) so a wall of avatars
    * doesn't blink in unison.
    */
   phase?: number;
@@ -297,12 +299,14 @@ function Scene({ frame, surface, eyeColor, size, style }: SceneProps) {
 interface StillProps {
   spec: AvatarSpec;
   size: number;
-  phase: number;
+  /** Loop position to show; the mood's key pose when omitted. */
+  phase?: number;
   style?: StyleProp<ViewStyle>;
   ref?: Ref<MoodstoneHandle>;
 }
 
 interface AnimatedProps extends StillProps {
+  phase: number;
   paused: boolean;
   morphDuration: number;
 }
@@ -434,7 +438,10 @@ function AnimatedAvatar({
 
 function StillAvatar({ spec, size, phase, style, ref }: StillProps) {
   const still = useMemo(
-    () => computeFrame(spec, phase * loopLength(spec.mood)),
+    () =>
+      phase === undefined
+        ? stillFrame(spec)
+        : computeFrame(spec, phase * loopLength(spec.mood)),
     [spec, phase],
   );
   const path = useSurfacePath(spec);
@@ -470,7 +477,7 @@ export function Moodstone(props: MoodstoneProps) {
     size = 64,
     animated = true,
     paused = false,
-    phase = 0,
+    phase,
     morphDuration = 460,
     style,
     ref,
@@ -481,7 +488,7 @@ export function Moodstone(props: MoodstoneProps) {
       ref={ref}
       spec={spec}
       size={size}
-      phase={phase}
+      phase={phase ?? 0}
       paused={paused}
       morphDuration={morphDuration}
       style={style}

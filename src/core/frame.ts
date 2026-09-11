@@ -19,6 +19,7 @@ import type {
   EyeRect,
   Frame,
   Mood,
+  Seed,
   SleepMark,
   Swirl,
 } from "./types";
@@ -669,6 +670,19 @@ const ORBIT_MIN = 0.85;
 const ORBIT_RANGE = 0.3;
 
 /**
+ * Where the light is after `turns` revolutions. It orbits the centre; its start,
+ * direction and orbit size come from the seed so agents drift differently.
+ */
+function lightAt(seed: Seed, turns: number): [number, number] {
+  "worklet";
+  const [startAngle, drift, orbitSize] = seed;
+  const dir = drift > Math.PI ? -1 : 1;
+  const orbit = LIGHT_ORBIT * (ORBIT_MIN + ORBIT_RANGE * (orbitSize / TAU));
+  const angle = startAngle + dir * TAU * turns;
+  return [CENTER + orbit * Math.cos(angle), CENTER + orbit * Math.sin(angle)];
+}
+
+/**
  * Compute one frame of an avatar at absolute time `t` (seconds).
  * The result is periodic with period `loopLength(spec.mood)`. A spec with a
  * custom `shape` needs its `contentScale`, so pass it through `resolveSpec` first.
@@ -691,15 +705,7 @@ export function computeFrame(spec: AvatarSpec, t: number): Frame {
   };
   const s = moodState(spec.mood, moment);
 
-  // The light source orbits the centre. Its start, direction and orbit size come from the seed so agents drift differently.
-  const [startAngle, drift, orbitSize] = spec.seed;
-  const dir = drift > Math.PI ? -1 : 1;
-  const orbit = LIGHT_ORBIT * (ORBIT_MIN + ORBIT_RANGE * (orbitSize / TAU));
-  const angle = startAngle + dir * TAU * s.lightTurns;
-  const light: [number, number] = [
-    CENTER + orbit * Math.cos(angle),
-    CENTER + orbit * Math.sin(angle),
-  ];
+  const light = lightAt(spec.seed, s.lightTurns);
   const [lit, shade] = litShade(s.color);
 
   // Blink squash: shut eyes get a touch wider and almost flat.
@@ -755,5 +761,40 @@ export function computeFrame(spec: AvatarSpec, t: number): Frame {
     eyes,
     swirls,
     sleepMarks: s.sleepMarks,
+  };
+}
+
+/* ---- stills ---- */
+
+/** Where each mood's key pose falls in its eye cycle: the moment that shows the mood best. */
+const KEY_POSE: Readonly<Record<Mood, number>> = {
+  idle: 0, // at rest
+  observing: 0.25, // looking up and right, head turned
+  thinking: 0.57, // the merged dot, centred
+  processing: 0.59, // four dots square to the axes, one spin done
+  working: 0.137, // mid-sweep along the first line
+  done: 0.286, // squinting with the eyes up, the wiggle level
+  failed: 0.37, // flattened on the floor, before the swirls
+  invalid: 0.41, // narrowed, the head centred mid-shake
+  inactive: 0.12, // asleep, all three "z"s in view
+};
+
+/**
+ * The frame a still avatar shows: the mood's key pose, in the spec's own
+ * colour and with the light where the seed starts it, so a list of stills
+ * changes only the faces from mood to mood (`done` would otherwise freeze on a
+ * rainbow hue). A custom `shape` needs `resolveSpec` first, as for `computeFrame`.
+ */
+export function stillFrame(spec: AvatarSpec): Frame {
+  "worklet";
+  const { cycle } = MOOD_TABLE[spec.mood];
+  const frame = computeFrame(spec, KEY_POSE[spec.mood] * cycle);
+  const [lit, shade] = litShade(spec.color);
+  return {
+    ...frame,
+    color: spec.color,
+    light: lightAt(spec.seed, 0),
+    lit,
+    shade,
   };
 }

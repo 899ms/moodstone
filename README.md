@@ -16,7 +16,7 @@ import { Moodstone } from 'moodstone';
 - **Twelve palette colours**, or any hex. White or black eyes.
 - **UI-thread animation.** One pure function, `computeFrame(spec, t)`, describes every frame. Skia reads it through Reanimated derived values, so the JS thread stays idle. Pause, restart, or offset the loop.
 - **Exports.** PNG at any size through a ref, a still SVG, and a self-contained animated SVG of the whole loop.
-- **Still frames** for lists (`animated={false}`).
+- **Still frames** for lists (`animated={false}`). A still shows its mood's key pose in the avatar's own colour and light, so a list of stills tells you at a glance what each agent is doing.
 - **Platform-agnostic core.** `moodstone/core` has no React Native imports. The same maths drives the Skia renderer and the SVG exports.
 
 ## Install
@@ -40,9 +40,9 @@ Peer dependencies: React 19+, React Native 0.78+, Skia 2+, Reanimated 4+. In Exp
 | `eyeColor` | `'white' \| 'black' \| hex` | `'white'` | |
 | `seed` | `[number, number, number]` | `DEFAULT_SEED` | Light start angle, drift direction and orbit radius. `randomSeed()` gives a fresh one. |
 | `size` | `number` | `64` | dp. |
-| `animated` | `boolean` | `true` | `false` renders one frame at `phase`. |
+| `animated` | `boolean` | `true` | `false` renders one frame: the mood's key pose, or `phase` when set. |
 | `paused` | `boolean` | `false` | Freezes the loop in place. |
-| `phase` | `0..1` | `0` | Loop position for stills, start offset for animated avatars. Give wall tiles different phases so they don't blink together. |
+| `phase` | `0..1` | | Loop position for stills, start offset for animated avatars. Unset, a still shows its mood's key pose and an animated avatar starts at `0`. Give wall tiles different phases so they don't blink together. |
 | `morphDuration` | `number` | `460` | Shape morph length in ms. `0` snaps. |
 | `style` | `ViewStyle` | | Applied to the canvas. |
 
@@ -80,14 +80,14 @@ ref.current?.restart();
 ## Exports outside the app
 
 ```ts
-import { renderAvatarSvg, renderAnimatedAvatarSvg, computeFrame, DEFAULT_SEED, PALETTE, type AvatarSpec } from 'moodstone';
+import { renderAvatarSvg, renderAnimatedAvatarSvg, stillFrame, DEFAULT_SEED, PALETTE, type AvatarSpec } from 'moodstone';
 
 const spec: AvatarSpec = { seed: DEFAULT_SEED, color: PALETTE.pine, cut: 'circle', mood: 'thinking', eyeColor: '#FFFFFF' };
-const still = renderAvatarSvg(spec, computeFrame(spec, 1.2), { size: 240 });
+const still = renderAvatarSvg(spec, stillFrame(spec), { size: 240 }); // the mood's key pose
 const loop = renderAnimatedAvatarSvg(spec, { size: 240, fps: 24, background: '#0e1113' });
 ```
 
-The animated SVG uses SMIL, samples every attribute from `computeFrame`, and loops seamlessly. GIF and WebM encoders are not bundled; `computeFrame` plus `renderAvatarImage` give you every frame if you want to encode one natively.
+`stillFrame(spec)` is the frame a still `Moodstone` shows; pass `computeFrame(spec, t)` for any other moment. The animated SVG uses SMIL, samples every attribute from `computeFrame`, and loops seamlessly. GIF and WebM encoders are not bundled; `computeFrame` plus `renderAvatarImage` give you every frame if you want to encode one natively.
 
 ## Mapping agent state to moods
 
@@ -110,24 +110,25 @@ Each `Moodstone` is its own Skia canvas with its own clock. A handful of animate
 ## Core API
 
 ```ts
-import { computeFrame, randomSeed, loopLength, MOODS, CUTS, PALETTE, shapeRadii, type AvatarSpec } from 'moodstone/core';
+import { computeFrame, stillFrame, randomSeed, loopLength, MOODS, CUTS, PALETTE, shapeRadii, type AvatarSpec } from 'moodstone/core';
 
 const spec: AvatarSpec = { seed: randomSeed(), color: PALETTE.sky, cut: 'hexagon', mood: 'done', eyeColor: '#FFFFFF' };
 const frame = computeFrame(spec, 1.25); // plain numbers: eyes, tilt, light position, lit/shade hues, swirls, sleep marks
+const still = stillFrame(spec); // the mood's key pose, in the spec's own colour and light
 ```
 
-A spec with a custom `shape` needs its face scale before `computeFrame` can place the eyes. `resolveSpec(spec)` fills it in; `renderAnimatedAvatarSvg` does this for you.
+A spec with a custom `shape` needs its face scale before `computeFrame` or `stillFrame` can place the eyes. `resolveSpec(spec)` fills it in; `renderAnimatedAvatarSvg` does this for you.
 
 ## Example app
 
-`example/` is an Expo app with a single-screen Studio: colour, cut, mood, eye colour and tuning sliders for the parameters the selected cut exposes. It also accepts deep-link parameters so it can be driven from a script:
+`example/` is an Expo app with a single-screen Studio: colour, cut, mood, motion (animated or still), eye colour and tuning sliders for the parameters the selected cut exposes. It also accepts deep-link parameters so it can be driven from a script:
 
 ```bash
 cd example && npx expo start --ios
 xcrun simctl openurl booted "exp://<host>:8081/--/?mood=failed&cut=burst&lobes=9"
 ```
 
-Parameters: `color`, `cut`, `mood`, `eyes`, `theme`, and any tunable parameter (`n`, `ax`, `rot`, `lobes`, `depth`, `sharp`, `sides`, `round`), which applies when the cut exposes it.
+Parameters: `color`, `cut`, `mood`, `motion` (`animated` or `still`), `eyes`, `theme`, and any tunable parameter (`n`, `ax`, `rot`, `lobes`, `depth`, `sharp`, `sides`, `round`), which applies when the cut exposes it.
 
 ## Development
 

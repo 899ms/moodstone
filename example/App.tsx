@@ -98,6 +98,7 @@ function Studio() {
   const [tune, setTune] = useState<Tune | null>(null);
   const [mood, setMood] = useState<Mood>('idle');
   const [eyes, setEyes] = useState<'white' | 'black'>('white');
+  const [motion, setMotion] = useState<'animated' | 'still'>('animated');
   const scroller = useRef<ScrollView>(null);
 
   const activeColor = PALETTE[color];
@@ -121,6 +122,7 @@ function Studio() {
     if (params.cut && CUT_SET.has(params.cut)) chooseCut(params.cut as Cut);
     if (params.mood && MOOD_SET.has(params.mood)) setMood(params.mood as Mood);
     if (params.eyes === 'white' || params.eyes === 'black') setEyes(params.eyes);
+    if (params.motion === 'animated' || params.motion === 'still') setMotion(params.motion);
     if (params.theme === 'light' || params.theme === 'dark') setTheme(params.theme);
     const tweak: Tune = {};
     for (const k of TUNE_KEYS) if (params[k] !== undefined) tweak[k] = Number(params[k]);
@@ -160,7 +162,7 @@ function Studio() {
 
       {/* stage */}
       <View style={[styles.stage, { height: maxStage + 16, backgroundColor: c.panel }]}>
-        <Moodstone seed={seed} color={color} {...silhouette} mood={mood} eyeColor={eyes} size={maxStage} />
+        <Moodstone seed={seed} color={color} {...silhouette} mood={mood} eyeColor={eyes} size={maxStage} animated={motion === 'animated'} />
       </View>
 
       {/* controls */}
@@ -169,6 +171,13 @@ function Studio() {
           {MOODS.map((m) => (
             <Pressable key={m.key} onPress={() => setMood(m.key)} style={[styles.chip, { backgroundColor: c.chip }, ring(m.key === mood)]}>
               <Text style={[styles.chipText, { color: c.text }]}>{m.label}</Text>
+            </Pressable>
+          ))}
+        </Section>
+        <Section label="Motion" c={c}>
+          {(['animated', 'still'] as const).map((m) => (
+            <Pressable key={m} onPress={() => setMotion(m)} style={[styles.chip, { backgroundColor: c.chip }, ring(m === motion)]}>
+              <Text style={[styles.chipText, { color: c.text }]}>{m === 'animated' ? 'Animated' : 'Still'}</Text>
             </Pressable>
           ))}
         </Section>
