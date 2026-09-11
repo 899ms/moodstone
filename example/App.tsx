@@ -1,5 +1,7 @@
 import Slider from "@react-native-community/slider";
+import * as Haptics from "expo-haptics";
 import { StatusBar } from "expo-status-bar";
+import { Moon, Shuffle, Sun } from "lucide-react-native";
 import {
   type Cut,
   CUT_KEYS,
@@ -24,11 +26,14 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Linking,
   Pressable,
+  type PressableProps,
   ScrollView,
+  type StyleProp,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
+  type ViewStyle,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
@@ -122,6 +127,7 @@ function Studio() {
   const silhouette = { cut, tune: tune ?? undefined } as CutTune;
   const dark = theme === "dark";
   const c = dark ? DARK : LIGHT;
+  const ThemeIcon = dark ? Moon : Sun;
 
   // Selecting a cut returns the knobs to that preset, in the same render so the old tune never reaches the new cut.
   const chooseCut = (k: Cut) => {
@@ -176,24 +182,22 @@ function Studio() {
 
       {/* header */}
       <View style={styles.header}>
-        <Pressable
+        {/* The icons ignore touches, so a tap on one lands on its button rather than on the SVG view. */}
+        <HapticPressable
           onPress={() => setTheme(dark ? "light" : "dark")}
+          accessibilityLabel="Toggle theme"
           style={[styles.iconButton, { backgroundColor: c.chip }]}
         >
-          <Text style={[styles.icon, { color: c.muted }]}>
-            {dark ? "☾" : "☀"}
-          </Text>
-        </Pressable>
+          <ThemeIcon size={18} color={c.muted} pointerEvents="none" />
+        </HapticPressable>
         <Text style={[styles.title, { color: c.text }]}>Moodstone</Text>
-        <Pressable
+        <HapticPressable
           onPress={randomise}
           accessibilityLabel="Randomise"
           style={[styles.iconButton, { backgroundColor: c.chip }]}
         >
-          <Text style={[styles.icon, styles.dieIcon, { color: c.muted }]}>
-            ⚄
-          </Text>
-        </Pressable>
+          <Shuffle size={18} color={c.muted} pointerEvents="none" />
+        </HapticPressable>
       </View>
 
       {/* stage */}
@@ -222,7 +226,7 @@ function Studio() {
       >
         <Section label="Mood" c={c}>
           {MOODS.map((m) => (
-            <Pressable
+            <HapticPressable
               key={m.key}
               onPress={() => setMood(m.key)}
               style={[
@@ -234,12 +238,12 @@ function Studio() {
               <Text style={[styles.chipText, { color: c.text }]}>
                 {m.label}
               </Text>
-            </Pressable>
+            </HapticPressable>
           ))}
         </Section>
         <Section label="Motion" c={c}>
           {(["animated", "still"] as const).map((m) => (
-            <Pressable
+            <HapticPressable
               key={m}
               onPress={() => setMotion(m)}
               style={[
@@ -251,12 +255,12 @@ function Studio() {
               <Text style={[styles.chipText, { color: c.text }]}>
                 {m === "animated" ? "Animated" : "Still"}
               </Text>
-            </Pressable>
+            </HapticPressable>
           ))}
         </Section>
         <Section label="Cut" c={c}>
           {CUT_KEYS.map((k) => (
-            <Pressable
+            <HapticPressable
               key={k}
               onPress={() => chooseCut(k)}
               style={[
@@ -268,12 +272,12 @@ function Studio() {
               <Text style={[styles.chipText, { color: c.text }]}>
                 {CUTS[k].label}
               </Text>
-            </Pressable>
+            </HapticPressable>
           ))}
         </Section>
         <Section label="Colour" c={c}>
           {PALETTE_KEYS.map((k) => (
-            <Pressable
+            <HapticPressable
               key={k}
               onPress={() => setColor(k)}
               style={[styles.swatch, swatch(k)]}
@@ -281,14 +285,14 @@ function Studio() {
               <View
                 style={[styles.swatchFill, { backgroundColor: PALETTE[k] }]}
               />
-            </Pressable>
+            </HapticPressable>
           ))}
         </Section>
         <Section
           label="Tune"
           c={c}
           trailing={
-            <Pressable
+            <HapticPressable
               onPress={() => setTune(null)}
               disabled={!tune}
               style={[
@@ -298,7 +302,7 @@ function Studio() {
               ]}
             >
               <Text style={[styles.chipText, { color: c.text }]}>Reset</Text>
-            </Pressable>
+            </HapticPressable>
           }
           column
         >
@@ -326,7 +330,7 @@ function Studio() {
         </Section>
         <Section label="Look" c={c}>
           {(["white", "black"] as const).map((e) => (
-            <Pressable
+            <HapticPressable
               key={e}
               onPress={() => setEyes(e)}
               style={[
@@ -338,7 +342,7 @@ function Studio() {
               <Text style={[styles.chipText, { color: c.text }]}>
                 {e === "white" ? "White eyes" : "Black eyes"}
               </Text>
-            </Pressable>
+            </HapticPressable>
           ))}
         </Section>
       </ScrollView>
@@ -367,6 +371,27 @@ function Section({
       </View>
       <View style={column ? styles.column : styles.wrapRow}>{children}</View>
     </View>
+  );
+}
+
+/** Pressable for the page's buttons and toggles: it dims to half opacity while held and plays a light haptic on press. */
+function HapticPressable({
+  onPress,
+  style,
+  ...props
+}: Omit<PressableProps, "style"> & { style?: StyleProp<ViewStyle> }) {
+  return (
+    <Pressable
+      {...props}
+      onPress={(e) => {
+        // On press rather than press-in, so starting a scroll on a chip doesn't buzz.
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(
+          () => undefined,
+        );
+        onPress?.(e);
+      }}
+      style={({ pressed }) => [style, pressed && styles.pressed]}
+    />
   );
 }
 
@@ -404,9 +429,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  icon: { fontSize: 13, fontWeight: "700" },
-  // The die glyph renders much smaller than the moon at the same font size.
-  dieIcon: { fontSize: 19 },
   stage: {
     borderRadius: 24,
     alignItems: "center",
@@ -457,4 +479,5 @@ const styles = StyleSheet.create({
   },
   chipSmall: { height: 28, paddingHorizontal: 10 },
   chipText: { fontSize: 13, fontWeight: "600" },
+  pressed: { opacity: 0.5 },
 });
