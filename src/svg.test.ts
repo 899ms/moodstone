@@ -34,3 +34,38 @@ describe('svg export', () => {
     expect((asleep.match(/attributeName="d"/g) ?? []).length).toBe(3);
   });
 });
+
+describe('svg ids', () => {
+  // Every def an SVG declares, keyed by id.
+  const defs = (svg: string) => new Map([...svg.matchAll(/<(clipPath|radialGradient|filter) id="([^"]+)".*?<\/\1>/g)].map((m) => [m[2], m[0]]));
+  const clipId = (svg: string) => svg.match(/<clipPath id="([^"]+)"/)?.[1];
+
+  test('same cut with different shapes gets different clip ids', () => {
+    const a: AvatarSpec = { ...base, mood: 'idle', shape: { n: 3 } };
+    const b: AvatarSpec = { ...base, mood: 'idle', shape: { n: 5 } };
+    expect(clipId(renderAvatarSvg(a, computeFrame(a, 0)))).not.toBe(clipId(renderAvatarSvg(b, computeFrame(b, 0))));
+    expect(clipId(renderAnimatedAvatarSvg(a, { fps: 12 }))).not.toBe(clipId(renderAnimatedAvatarSvg(b, { fps: 12 })));
+    const plain: AvatarSpec = { ...base, mood: 'idle' };
+    expect(clipId(renderAvatarSvg(plain, computeFrame(plain, 0)))).toBe('moodstone-cut-circle');
+  });
+
+  test('an id never names two different defs across avatars on one page', () => {
+    const specs: AvatarSpec[] = [
+      { ...base, mood: 'idle' },
+      { ...base, mood: 'idle', shape: { n: 3 } },
+      { ...base, mood: 'idle', seed: [1, 2, 3] },
+      { ...base, mood: 'idle', color: PALETTE.sky },
+      { ...base, mood: 'done' },
+    ];
+    const page = new Map<string, string>();
+    for (const spec of specs) {
+      const svgs = [renderAvatarSvg(spec, computeFrame(spec, 1.3)), renderAvatarSvg(spec, computeFrame(spec, 2.9)), renderAnimatedAvatarSvg(spec, { fps: 12 })];
+      for (const svg of svgs) {
+        for (const [id, def] of defs(svg)) {
+          expect(page.get(id) ?? def).toBe(def);
+          page.set(id, def);
+        }
+      }
+    }
+  });
+});

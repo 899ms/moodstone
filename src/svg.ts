@@ -1,5 +1,5 @@
 import type { AvatarSpec, Frame } from './core/types';
-import { BOX, CENTER, GRAIN, LIGHT_REACH, specPoints } from './core/geometry';
+import { BOX, CENTER, GRAIN, LIGHT_REACH, specPoints, specShapeKey } from './core/geometry';
 import { pointsToPathD } from './core/shape';
 import { computeFrame, swirlPoints } from './core/frame';
 import { loopLength } from './core/moods';
@@ -12,6 +12,19 @@ const f = (n: number) => {
 const RAD2DEG = 180 / Math.PI;
 
 const cutClip = (spec: AvatarSpec) => `<path d="${pointsToPathD(specPoints(spec))}"/>`;
+
+/**
+ * FNV-1a as base 36, for def ids that follow their content: avatars inlined in
+ * one document then never resolve `url(#…)` to each other's clip or gradient.
+ */
+function hash(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
+  return (h >>> 0).toString(36);
+}
+
+/** Preset cuts keep a readable id; custom shapes add a hash of their parameters. */
+const clipIdFor = (spec: AvatarSpec) => `moodstone-cut-${spec.cut}${spec.shape ? '-' + hash(specShapeKey(spec)) : ''}`;
 
 /** Static grain: fractal noise in overlay mode at low opacity. */
 const GRAIN_FILTER = `<filter id="moodstone-grain" x="0" y="0" width="1" height="1"><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch" result="n"/><feColorMatrix in="n" type="saturate" values="0"/></filter>`;
@@ -41,12 +54,14 @@ export interface SvgOptions {
  */
 export function renderAvatarSvg(spec: AvatarSpec, frame: Frame, opts: SvgOptions = {}): string {
   const size = opts.size ?? 240;
-  // The clip depends only on the cut, so equal ids across avatars on one page are harmless.
-  const clipId = `moodstone-cut-${spec.cut}`;
-  const gradId = `moodstone-light-${spec.cut}-${frame.lit.slice(1)}-${frame.shade.slice(1)}`;
+  const clipId = clipIdFor(spec);
   const [lx, ly] = frame.light;
-  const gradient = `<radialGradient id="${gradId}" gradientUnits="userSpaceOnUse" cx="${f(lx)}" cy="${f(ly)}" r="${LIGHT_REACH}"><stop offset="0" stop-color="${frame.lit}"/><stop offset="1" stop-color="${frame.shade}"/></radialGradient>`;
-  const highlight = `<radialGradient id="${gradId}-hi" gradientUnits="userSpaceOnUse" cx="${f(lx)}" cy="${f(ly)}" r="${LIGHT_REACH / 2}"><stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>`;
+  const light = `cx="${f(lx)}" cy="${f(ly)}"`;
+  const stops = `<stop offset="0" stop-color="${frame.lit}"/><stop offset="1" stop-color="${frame.shade}"/>`;
+  // The highlight only adds the light position, which the gradient's id already covers.
+  const gradId = `moodstone-light-${hash(light + stops)}`;
+  const gradient = `<radialGradient id="${gradId}" gradientUnits="userSpaceOnUse" ${light} r="${LIGHT_REACH}">${stops}</radialGradient>`;
+  const highlight = `<radialGradient id="${gradId}-hi" gradientUnits="userSpaceOnUse" ${light} r="${LIGHT_REACH / 2}"><stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>`;
   const eyes = frame.eyes
     .filter((e) => e.alpha > 0 && e.w > 0 && e.h > 0)
     .map((e) => {
@@ -106,7 +121,7 @@ export function renderAnimatedAvatarSvg(spec: AvatarSpec, opts: AnimatedSvgOptio
   const animT = (type: string, values: string[]) =>
     `<animateTransform attributeName="transform" type="${type}" values="${values.join(';')}" keyTimes="${keyTimes}" dur="${dur}" repeatCount="indefinite"/>`;
   const varies = (vals: number[]) => vals.some((v) => Math.abs(v - vals[0]) > 1e-3);
-  const clipId = `moodstone-cut-${spec.cut}`;
+  const clipId = clipIdFor(spec);
 
   // Body motion.
   const tx = frames.map((fr) => fr.offset[0]);
@@ -122,14 +137,16 @@ export function renderAnimatedAvatarSvg(spec: AvatarSpec, opts: AnimatedSvgOptio
   const lx = frames.map((fr) => fr.light[0]);
   const ly = frames.map((fr) => fr.light[1]);
   const lightMoves = varies(lx) || varies(ly);
-  const gradId = `moodstone-light-${spec.cut}-${spec.mood}`;
+  const light = `cx="${f(lx[0])}" cy="${f(ly[0])}"`;
   const lightAnim = lightMoves ? anim('cx', lx.map(f)) + anim('cy', ly.map(f)) : '';
-  const gradient =
-    `<radialGradient id="${gradId}" gradientUnits="userSpaceOnUse" cx="${f(lx[0])}" cy="${f(ly[0])}" r="${LIGHT_REACH}">${lightAnim}` +
+  const stops =
     `<stop offset="0" stop-color="${lits[0]}">${colorVaries ? anim('stop-color', lits) : ''}</stop>` +
-    `<stop offset="1" stop-color="${shades[0]}">${colorVaries ? anim('stop-color', shades) : ''}</stop></radialGradient>`;
+    `<stop offset="1" stop-color="${shades[0]}">${colorVaries ? anim('stop-color', shades) : ''}</stop>`;
+  // Seed, colour, mood and fps all end up in these strings, so their hash keeps the ids apart.
+  const gradId = `moodstone-light-${hash(light + lightAnim + stops)}`;
+  const gradient = `<radialGradient id="${gradId}" gradientUnits="userSpaceOnUse" ${light} r="${LIGHT_REACH}">${lightAnim}${stops}</radialGradient>`;
   const highlight =
-    `<radialGradient id="${gradId}-hi" gradientUnits="userSpaceOnUse" cx="${f(lx[0])}" cy="${f(ly[0])}" r="${LIGHT_REACH / 2}">${lightAnim}` +
+    `<radialGradient id="${gradId}-hi" gradientUnits="userSpaceOnUse" ${light} r="${LIGHT_REACH / 2}">${lightAnim}` +
     `<stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>`;
   const surface = `<rect width="${BOX}" height="${BOX}" fill="url(#${gradId})"/><rect width="${BOX}" height="${BOX}" fill="url(#${gradId}-hi)"/>${grainRect()}`;
 
