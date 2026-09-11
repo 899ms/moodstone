@@ -6,6 +6,7 @@ import Slider from '@react-native-community/slider';
 import {
   CUTS,
   CUT_KEYS,
+  CUT_TUNES,
   MOODS,
   Moodstone,
   PALETTE,
@@ -14,11 +15,13 @@ import {
   loopLength,
   randomSeed,
   type Cut,
+  type CutTune,
   type Mood,
   type MoodstoneHandle,
   type PaletteKey,
   type Seed,
-  type ShapeParams,
+  type Tune,
+  type TuneKey,
 } from 'moodstone';
 
 /* ---------- knobs ---------- */
@@ -28,7 +31,6 @@ const MOOD_SET = new Set<string>(MOODS.map((m) => m.key));
 const CUT_SET = new Set<string>(CUT_KEYS);
 
 interface Knob {
-  key: keyof ShapeParams;
   label: string;
   min: number;
   max: number;
@@ -38,25 +40,18 @@ interface Knob {
 const one = (v: number) => v.toFixed(1);
 const int = (v: number) => String(Math.round(v));
 const two = (v: number) => v.toFixed(2);
-const FAMILY_KNOBS: Record<'super' | 'poly' | 'lobed', Knob[]> = {
-  super: [
-    { key: 'n', label: 'Squareness', min: 2, max: 16, step: 0.1, fmt: one },
-    { key: 'rot', label: 'Rotation', min: 0, max: 90, step: 1, fmt: int },
-    { key: 'ax', label: 'Width', min: 0.75, max: 1.35, step: 0.01, fmt: two },
-  ],
-  poly: [
-    { key: 'sides', label: 'Sides', min: 3, max: 8, step: 1, fmt: int },
-    { key: 'round', label: 'Roundness', min: 0.05, max: 0.5, step: 0.01, fmt: two },
-    { key: 'rot', label: 'Rotation', min: -90, max: 90, step: 1, fmt: int },
-  ],
-  lobed: [
-    { key: 'lobes', label: 'Lobes', min: 3, max: 16, step: 1, fmt: int },
-    { key: 'depth', label: 'Depth', min: 0.02, max: 0.25, step: 0.005, fmt: two },
-    { key: 'sharp', label: 'Sharpness', min: 0.3, max: 2.5, step: 0.05, fmt: two },
-  ],
+/** One slider per tunable parameter; each cut shows the ones CUT_TUNES lists for it. */
+const KNOBS: Record<TuneKey, Knob> = {
+  n: { label: 'Squareness', min: 2, max: 16, step: 0.1, fmt: one },
+  rot: { label: 'Rotation', min: -90, max: 90, step: 1, fmt: int },
+  ax: { label: 'Width', min: 0.75, max: 1.35, step: 0.01, fmt: two },
+  sides: { label: 'Sides', min: 3, max: 8, step: 1, fmt: int },
+  round: { label: 'Roundness', min: 0.05, max: 0.5, step: 0.01, fmt: two },
+  lobes: { label: 'Lobes', min: 3, max: 16, step: 1, fmt: int },
+  depth: { label: 'Depth', min: 0.02, max: 0.25, step: 0.005, fmt: two },
+  sharp: { label: 'Sharpness', min: 0.3, max: 2.5, step: 0.05, fmt: two },
 };
-const familyOf = (cut: Cut): keyof typeof FAMILY_KNOBS => (CUTS[cut].shape.sides ? 'poly' : CUTS[cut].shape.lobes ? 'lobed' : 'super');
-const SHAPE_PARAM_KEYS: (keyof ShapeParams)[] = ['n', 'ax', 'ay', 'rot', 'lobes', 'depth', 'sharp', 'sides', 'round'];
+const TUNE_KEYS = Object.keys(KNOBS) as TuneKey[];
 
 /** Query params from `exp://host:port/--/?mood=done&cut=burst` so the app can be driven from a script. */
 function useDeepLinkParams(): Record<string, string> {
@@ -100,7 +95,7 @@ function Studio() {
   const [color, setColor] = useState<PaletteKey>('pine');
   const [cut, setCut] = useState<Cut>('circle');
   const [seed, setSeed] = useState<Seed | undefined>(undefined);
-  const [tune, setTune] = useState<Partial<ShapeParams> | null>(null);
+  const [tune, setTune] = useState<Tune | null>(null);
   const [mood, setMood] = useState<Mood>('idle');
   const [eyes, setEyes] = useState<'white' | 'black'>('white');
   const [paused, setPaused] = useState(false);
@@ -111,20 +106,25 @@ function Studio() {
   const scroller = useRef<ScrollView>(null);
 
   const activeColor = PALETTE[color];
-  const family = familyOf(cut);
-  const knobs = FAMILY_KNOBS[family];
+  const knobs = CUT_TUNES[cut].map((key) => ({ key, ...KNOBS[key] }));
   const preset = useMemo(() => ({ ...SHAPE_DEFAULTS, ...CUTS[cut].shape }), [cut]);
   const shape = tune ? { ...preset, ...tune } : preset;
+  // `cut` is runtime state, so TypeScript can't pair it with `tune`. The sliders only write keys from
+  // CUT_TUNES[cut], and the library ignores any others.
+  const silhouette = { cut, tune: tune ?? undefined } as CutTune;
   const moodInfo = MOODS.find((m) => m.key === mood)!;
   const dark = theme === 'dark';
   const c = dark ? DARK : LIGHT;
 
-  // Selecting a cut returns the knobs to that preset.
-  useEffect(() => setTune(null), [cut]);
+  // Selecting a cut returns the knobs to that preset, in the same render so the old tune never reaches the new cut.
+  const chooseCut = (k: Cut) => {
+    setCut(k);
+    setTune(null);
+  };
 
   useEffect(() => {
     if (params.color && params.color in PALETTE) setColor(params.color as PaletteKey);
-    if (params.cut && CUT_SET.has(params.cut)) setCut(params.cut as Cut);
+    if (params.cut && CUT_SET.has(params.cut)) chooseCut(params.cut as Cut);
     if (params.mood && MOOD_SET.has(params.mood)) setMood(params.mood as Mood);
     if (params.eyes === 'white' || params.eyes === 'black') setEyes(params.eyes);
     if (params.paused) setPaused(params.paused === '1');
@@ -135,9 +135,9 @@ function Studio() {
     if (params.morph) setMorph(Number(params.morph) || 0);
     if (params.size) setSize(Math.max(48, Math.min(maxStage, Number(params.size) || maxStage)));
     if (params.theme === 'light' || params.theme === 'dark') setTheme(params.theme);
-    const tweak: Partial<ShapeParams> = {};
-    for (const k of SHAPE_PARAM_KEYS) if (params[k] !== undefined) tweak[k] = Number(params[k]);
-    if (Object.keys(tweak).length) setTimeout(() => setTune(tweak), 0);
+    const tweak: Tune = {};
+    for (const k of TUNE_KEYS) if (params[k] !== undefined) tweak[k] = Number(params[k]);
+    if (Object.keys(tweak).length) setTune(tweak);
     if (params.restart) avatar.current?.restart();
     if (params.scroll === 'end') setTimeout(() => scroller.current?.scrollToEnd({ animated: false }), 150);
     if (params.scroll === 'top') setTimeout(() => scroller.current?.scrollTo({ y: 0, animated: false }), 150);
@@ -147,10 +147,9 @@ function Studio() {
   const randomise = () => {
     setSeed(randomSeed());
     setColor(pick(PALETTE_KEYS));
-    setCut(pick(CUT_KEYS));
+    chooseCut(pick(CUT_KEYS));
     setMood(pick(MOODS).key);
     setEyes(Math.random() < 0.25 ? 'black' : 'white');
-    setTune(null);
   };
 
   const ring = (on: boolean) => ({ borderColor: on ? activeColor : 'transparent' });
@@ -177,8 +176,7 @@ function Studio() {
           ref={avatar}
           seed={seed}
           color={color}
-          cut={cut}
-          shape={tune ? shape : undefined}
+          {...silhouette}
           mood={mood}
           eyeColor={eyes}
           size={size}
@@ -202,7 +200,7 @@ function Studio() {
         </Section>
         <Section label="Cut" c={c}>
           {CUT_KEYS.map((k) => (
-            <Pressable key={k} onPress={() => setCut(k)} style={[styles.chip, { backgroundColor: c.chip }, ring(k === cut)]}>
+            <Pressable key={k} onPress={() => chooseCut(k)} style={[styles.chip, { backgroundColor: c.chip }, ring(k === cut)]}>
               <Text style={[styles.chipText, { color: c.text }]}>{CUTS[k].label}</Text>
             </Pressable>
           ))}

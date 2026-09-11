@@ -35,7 +35,8 @@ Peer dependencies: React 19+, React Native 0.78+, Skia 2+, Reanimated 4+. In Exp
 | `mood` | `Mood` | `'idle'` | See the list above. Changing it restarts the loop from its rest pose. |
 | `color` | palette key or hex | `'pine'` | `'pine'`, `'#1F8A70'`. |
 | `cut` | `Cut` | `'circle'` | Silhouette preset. Changing it morphs. |
-| `shape` | `Partial<ShapeParams>` | | Custom silhouette from the shape engine, overriding the cut: `{ n: 4.5 }`, `{ lobes: 12, depth: 0.11, sharp: 1.6 }`, `{ sides: 6, round: 0.3 }`. Changes morph too. |
+| `tune` | `Tune` | | Adjusts the cut's preset. Only the parameters that cut exposes are accepted, see [Tuning a cut](#tuning-a-cut). Changes morph. |
+| `shape` | `Partial<ShapeParams>` | | Custom silhouette from the shape engine, replacing the cut's geometry: `{ n: 4.5 }`, `{ lobes: 12, depth: 0.11, sharp: 1.6 }`, `{ sides: 6, round: 0.3 }`. Can't be combined with `tune`. Changes morph too. |
 | `eyeColor` | `'white' \| 'black' \| hex` | `'white'` | |
 | `seed` | `[number, number, number]` | `DEFAULT_SEED` | Light start angle, drift direction and orbit radius. `randomSeed()` gives a fresh one. |
 | `size` | `number` | `64` | dp. |
@@ -44,6 +45,24 @@ Peer dependencies: React 19+, React Native 0.78+, Skia 2+, Reanimated 4+. In Exp
 | `phase` | `0..1` | `0` | Loop position for stills, start offset for animated avatars. Give wall tiles different phases so they don't blink together. |
 | `morphDuration` | `number` | `460` | Shape morph length in ms. `0` snaps. |
 | `style` | `ViewStyle` | | Applied to the canvas. |
+
+### Tuning a cut
+
+Each cut exposes the shape parameters that visibly change it, listed in `CUT_TUNES`, and `tune` accepts only those:
+
+| Cut | Tunable |
+|---|---|
+| `circle` | `n`, `ax` |
+| `squircle`, `square`, `diamond` | `n`, `rot`, `ax` |
+| `hexagon` | `sides`, `round`, `rot` |
+| `badge`, `burst` | `lobes`, `depth`, `sharp` |
+
+```tsx
+<Moodstone cut="hexagon" tune={{ sides: 5 }} />  // ok
+<Moodstone cut="circle" tune={{ rot: 30 }} />    // type error: rotating a circle does nothing
+```
+
+The check needs a literal `cut`. When the cut comes from state, TypeScript can't pair it with the tune, so take the keys from `CUT_TUNES[cut]` and cast the pair to `CutTune`. Keys a cut doesn't expose are ignored at runtime either way. Outside React, set the spec's `shape` to `tunedShape(cut, tune)` and its `contentScale` to `shapeContentScale(shape)`, as the component does.
 
 ### Ref handle
 
@@ -99,14 +118,14 @@ const frame = computeFrame(spec, 1.25); // plain numbers: eyes, tilt, light posi
 
 ## Example app
 
-`example/` is an Expo app with a single-screen Studio: colour, cut, mood, eye colour, shape tuning sliders for the selected cut's family, loop scrubbing with play/pause/restart, size and a morph toggle. It also accepts deep-link parameters so it can be driven from a script:
+`example/` is an Expo app with a single-screen Studio: colour, cut, mood, eye colour, tuning sliders for the parameters the selected cut exposes, loop scrubbing with play/pause/restart, size and a morph toggle. It also accepts deep-link parameters so it can be driven from a script:
 
 ```bash
 cd example && npx expo start --ios
 xcrun simctl openurl booted "exp://<host>:8081/--/?mood=failed&still=0.6&cut=burst&lobes=9"
 ```
 
-Parameters: `color`, `cut`, `mood`, `eyes`, `paused`, `still` (0..1), `morph`, `size`, `theme`, `restart`, and any shape knob (`n`, `ax`, `rot`, `lobes`, `depth`, `sharp`, `sides`, `round`).
+Parameters: `color`, `cut`, `mood`, `eyes`, `paused`, `still` (0..1), `morph`, `size`, `theme`, `restart`, and any tunable parameter (`n`, `ax`, `rot`, `lobes`, `depth`, `sharp`, `sides`, `round`), which applies when the cut exposes it.
 
 ## Development
 

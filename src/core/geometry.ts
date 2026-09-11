@@ -40,6 +40,47 @@ export const CUTS: Record<Cut, CutDef> = {
 
 export const CUT_KEYS: readonly Cut[] = ['circle', 'squircle', 'square', 'diamond', 'hexagon', 'badge', 'burst'];
 
+/**
+ * The shape parameters each cut exposes for tuning. Only parameters that
+ * visibly change the cut are listed (rotating a circle does nothing).
+ */
+export const CUT_TUNES = {
+  circle: ['n', 'ax'],
+  squircle: ['n', 'rot', 'ax'],
+  square: ['n', 'rot', 'ax'],
+  diamond: ['n', 'rot', 'ax'],
+  hexagon: ['sides', 'round', 'rot'],
+  badge: ['lobes', 'depth', 'sharp'],
+  burst: ['lobes', 'depth', 'sharp'],
+} as const satisfies Record<Cut, readonly (keyof ShapeParams)[]>;
+
+/** A shape parameter that cut `C` exposes. */
+export type TuneKey<C extends Cut = Cut> = (typeof CUT_TUNES)[C][number];
+
+/** Adjustments to a cut's preset, limited to the parameters that cut exposes. */
+export type Tune<C extends Cut = Cut> = Partial<Pick<ShapeParams, TuneKey<C>>>;
+
+/** A cut paired with a tune that fits it. */
+export type CutTune = {
+  [C in Cut]: {
+    /** Silhouette preset. */
+    cut: C;
+    /** Adjustments to the preset, limited to `CUT_TUNES[cut]`. */
+    tune?: Tune<C>;
+  };
+}[Cut];
+
+/** A cut's preset with `tune` applied. Keys the cut doesn't expose are ignored, matching the type. */
+export function tunedShape<C extends Cut>(cut: C, tune: Tune<C>): Partial<ShapeParams>;
+export function tunedShape(cut: Cut, tune: Tune): Partial<ShapeParams> {
+  const shape: Partial<ShapeParams> = { ...CUTS[cut].shape };
+  for (const k of CUT_TUNES[cut]) {
+    const v = tune[k];
+    if (v !== undefined) shape[k] = v;
+  }
+  return shape;
+}
+
 /** Face scale for any shape: how far the eyes pull toward the centre. */
 export function shapeContentScale(shape: Partial<ShapeParams>): number {
   return clamp(inscribedRadius(shapeRadii(shape)) / 27, 0.55, 1);

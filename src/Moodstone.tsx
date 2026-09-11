@@ -5,8 +5,8 @@ import { Canvas, Group, Path, Points, RoundedRect, Shader, interpolatePaths, use
 import type { SkImage, SkPath, SkPoint } from '@shopify/react-native-skia';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
-import { BOX, CENTER, DEFAULT_SEED, EYE_BLACK, EYE_WHITE, clamp, computeFrame, easeInOut, loopLength, resolveColor, shapeContentScale, specShapeKey, swirlPoints } from './core';
-import type { AvatarSpec, Cut, Frame, Mood, PaletteKey, Seed, ShapeParams } from './core';
+import { BOX, CENTER, DEFAULT_SEED, EYE_BLACK, EYE_WHITE, clamp, computeFrame, easeInOut, loopLength, resolveColor, shapeContentScale, specShapeKey, swirlPoints, tunedShape } from './core';
+import type { AvatarSpec, Cut, CutTune, Frame, Mood, PaletteKey, Seed, ShapeParams, Tune } from './core';
 import { surfacePath } from './skia/paths';
 import { surfaceEffect, surfaceUniforms } from './skia/shader';
 import { renderAvatarImage } from './skia/draw';
@@ -16,19 +16,11 @@ const ORIGIN = { x: CENTER, y: CENTER };
 const NO_POINTS: SkPoint[] = [];
 const FAR_PAST = -1e12;
 
-export interface MoodstoneProps {
+interface BaseProps {
   /** Facet composition (three angles in radians). Default `DEFAULT_SEED`. */
   seed?: Seed;
   /** Palette key (`'pine'`) or any hex colour. Default `'pine'`. */
   color?: PaletteKey | (string & {});
-  /** Surface silhouette. Default `'circle'`. Changing it morphs the shape. */
-  cut?: Cut;
-  /**
-   * Custom silhouette from the shape engine, overriding `cut`'s geometry:
-   * `{ n: 4.5 }` squircle, `{ lobes: 12, depth: 0.11, sharp: 1.6 }` burst,
-   * `{ sides: 6, round: 0.3 }` hexagon. Changes morph like a cut change.
-   */
-  shape?: Partial<ShapeParams>;
   /** Animation state. Default `'idle'`. */
   mood?: Mood;
   /** `'white'`, `'black'` or a hex colour. Default white. */
@@ -45,10 +37,31 @@ export interface MoodstoneProps {
    * doesn't blink in unison.
    */
   phase?: number;
-  /** Duration of the shape morph when `cut` changes, in ms. 0 disables it. Default 460. */
+  /** Duration of the shape morph when the silhouette changes, in ms. 0 disables it. Default 460. */
   morphDuration?: number;
   style?: StyleProp<ViewStyle>;
 }
+
+/**
+ * The silhouette: a `cut` (default `'circle'`), optionally adjusted by a `tune`
+ * that accepts only the parameters that cut exposes (`CUT_TUNES`), or a custom
+ * `shape`. Changing any of them morphs the shape.
+ */
+type SilhouetteProps =
+  | (CutTune & { shape?: undefined })
+  | { cut?: undefined; tune?: Tune<'circle'>; shape?: undefined }
+  | {
+      cut?: Cut;
+      tune?: undefined;
+      /**
+       * Custom silhouette from the shape engine, replacing `cut`'s geometry:
+       * `{ n: 4.5 }` squircle, `{ lobes: 12, depth: 0.11, sharp: 1.6 }` burst,
+       * `{ sides: 6, round: 0.3 }` hexagon. Can't be combined with `tune`.
+       */
+      shape?: Partial<ShapeParams>;
+    };
+
+export type MoodstoneProps = BaseProps & SilhouetteProps;
 
 export interface SnapshotOptions {
   /** Pixel size of the output image. Default 1024. */
@@ -76,11 +89,12 @@ function resolveEyeColor(c: string | undefined): string {
 
 /** Build the full spec from props, filling gaps with defaults. */
 export function useAvatarSpec(props: MoodstoneProps): AvatarSpec {
-  const { seed, color = 'pine', cut = 'circle', mood = 'idle', eyeColor, shape } = props;
+  const { seed, color = 'pine', cut = 'circle', mood = 'idle', eyeColor, shape, tune } = props;
   const s0 = seed?.[0];
   const s1 = seed?.[1];
   const s2 = seed?.[2];
-  const shapeKey = shape ? JSON.stringify(shape) : '';
+  const resolved = shape ?? (tune ? tunedShape(cut, tune) : undefined);
+  const shapeKey = resolved ? JSON.stringify(resolved) : '';
   return useMemo(() => {
     const custom = shapeKey ? (JSON.parse(shapeKey) as Partial<ShapeParams>) : undefined;
     return {
