@@ -1,0 +1,82 @@
+/** Surface silhouette of the avatar. */
+export type Cut = 'rounded' | 'badge' | 'diamond' | 'flower' | 'burst';
+
+/** Animation state. Each mood is a seamless loop. */
+export type Mood =
+  | 'idle'
+  | 'observing'
+  | 'thinking'
+  | 'processing'
+  | 'working'
+  | 'done'
+  | 'failed'
+  | 'invalid'
+  | 'inactive';
+
+/** Three base rotations (radians) for the facet planes. Derived from the agent name. */
+export type Seed = readonly [number, number, number];
+
+/** Everything the renderer needs to know about an avatar, minus time. */
+export interface AvatarSpec {
+  seed: Seed;
+  /** Surface colour, any CSS hex colour (#rgb or #rrggbb). */
+  color: string;
+  cut: Cut;
+  mood: Mood;
+  /** Eye colour, hex. */
+  eyeColor: string;
+}
+
+/** One eye (or eye-derived dot) in the 64×64 box. Centre-based so it can rotate. */
+export interface EyeRect {
+  cx: number;
+  cy: number;
+  w: number;
+  h: number;
+  /** Corner radius. */
+  r: number;
+  /** Rotation in radians about the centre. */
+  rot: number;
+  alpha: number;
+}
+
+/** Dizzy swirl drawn over an eye in the `failed` mood. */
+export interface Swirl {
+  cx: number;
+  cy: number;
+  radius: number;
+  dir: 1 | -1;
+  /** 0..1, how much of the spiral is drawn. */
+  grow: number;
+  /** Rotation offset in radians. */
+  rot: number;
+  alpha: number;
+}
+
+/** A floating "z" in the `inactive` mood. */
+export interface SleepMark {
+  x: number;
+  y: number;
+  size: number;
+  alpha: number;
+}
+
+/** A fully resolved frame: plain numbers, renderer-agnostic. */
+export interface Frame {
+  /** Seconds into the loop. */
+  t: number;
+  /** 0..1 phase within the eye cycle. */
+  phase: number;
+  /** Surface colour for this frame (the `done` mood cycles it). */
+  color: string;
+  /** Body rotation in degrees about the centre. */
+  tilt: number;
+  /** Body translation. */
+  offset: readonly [number, number];
+  /** Facet plane rotations in radians, each about its own centre. */
+  planeAngles: readonly [number, number, number];
+  /** Always four entries. Unused ones have alpha 0. */
+  eyes: readonly [EyeRect, EyeRect, EyeRect, EyeRect];
+  swirls: readonly Swirl[];
+  sleepMarks: readonly SleepMark[];
+}

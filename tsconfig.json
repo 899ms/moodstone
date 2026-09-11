@@ -1,0 +1,43 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "lib": [
+      "esnext",
+      "dom"
+    ],
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": [
+      "bun"
+    ],
+    "paths": {
+      "react-native-agent-avatar": [
+        "./src/index"
+      ],
+      "react-native-agent-avatar/core": [
+        "./src/core/index"
+      ]
+    },
+    "customConditions": [
+      "source"
+    ]
+  },
+  "include": [
+    "src",
+    "dev"
+  ],
+  "exclude": [
+    "node_modules",
+    "lib",
+    "example"
+  ],
+  "extends": "expo/tsconfig.base"
+}

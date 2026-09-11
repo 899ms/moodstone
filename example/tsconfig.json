@@ -1,0 +1,14 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "react-native-agent-avatar": [
+        "../src/index.ts"
+      ],
+      "react-native-agent-avatar/core": [
+        "../src/core/index.ts"
+      ]
+    }
+  }
+}

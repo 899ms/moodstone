@@ -1,0 +1,10 @@
+node_modules/
+lib/
+dev/dist/
+.expo/
+*.log
+.DS_Store
+example/ios/
+example/android/
+dev/svg-sample.html
+dev/asvg-sample.html
