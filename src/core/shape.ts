@@ -1,5 +1,5 @@
-import { TAU, clamp, wrap01 } from './math';
-import { CENTER } from './box';
+import { CENTER } from "./box";
+import { clamp, TAU, wrap01 } from "./math";
 
 /**
  * Polar silhouette engine. Every cut is r(θ) sampled at SHAPE_SAMPLES
@@ -29,7 +29,16 @@ export interface ShapeParams {
   round: number;
 }
 
-export const SHAPE_DEFAULTS: ShapeParams = { n: 2, ax: 1, rot: 0, lobes: 0, depth: 0, sharp: 1, sides: 0, round: 0.3 };
+export const SHAPE_DEFAULTS: ShapeParams = {
+  n: 2,
+  ax: 1,
+  rot: 0,
+  lobes: 0,
+  depth: 0,
+  sharp: 1,
+  sides: 0,
+  round: 0.3,
+};
 
 /** Superellipse radius at angle `t`, before normalisation. */
 function superRadius(n: number, ax: number, t: number): number {
@@ -42,28 +51,40 @@ function superRadius(n: number, ax: number, t: number): number {
 const POLYGON_SEGMENT_POINTS = 24;
 
 /** Dense outline of a regular polygon with quadratic-rounded corners, unit circumradius, vertex 0 at angle 0. */
-function polygonOutline(sides: number, round: number): Array<[number, number]> {
-  const v: Array<[number, number]> = [];
+function polygonOutline(sides: number, round: number): [number, number][] {
+  const v: [number, number][] = [];
   for (let i = 0; i < sides; i++) {
     const t = (i * TAU) / sides;
     v.push([Math.cos(t), Math.sin(t)]);
   }
-  const out: Array<[number, number]> = [];
+  const out: [number, number][] = [];
   const per = POLYGON_SEGMENT_POINTS;
   for (let i = 0; i < sides; i++) {
     const p = v[(i + sides - 1) % sides];
     const c = v[i];
     const nx = v[(i + 1) % sides];
     // The corner curve runs from `a` on the incoming edge, through the vertex's pull, to `b` on the outgoing edge.
-    const a: [number, number] = [c[0] + (p[0] - c[0]) * round, c[1] + (p[1] - c[1]) * round];
-    const b: [number, number] = [c[0] + (nx[0] - c[0]) * round, c[1] + (nx[1] - c[1]) * round];
+    const a: [number, number] = [
+      c[0] + (p[0] - c[0]) * round,
+      c[1] + (p[1] - c[1]) * round,
+    ];
+    const b: [number, number] = [
+      c[0] + (nx[0] - c[0]) * round,
+      c[1] + (nx[1] - c[1]) * round,
+    ];
     for (let j = 0; j <= per; j++) {
       const u = j / per;
       const m = 1 - u;
-      out.push([m * m * a[0] + 2 * m * u * c[0] + u * u * b[0], m * m * a[1] + 2 * m * u * c[1] + u * u * b[1]]);
+      out.push([
+        m * m * a[0] + 2 * m * u * c[0] + u * u * b[0],
+        m * m * a[1] + 2 * m * u * c[1] + u * u * b[1],
+      ]);
     }
     // straight edge from this corner's exit to the next corner's entry
-    const na: [number, number] = [nx[0] + (c[0] - nx[0]) * round, nx[1] + (c[1] - nx[1]) * round];
+    const na: [number, number] = [
+      nx[0] + (c[0] - nx[0]) * round,
+      nx[1] + (c[1] - nx[1]) * round,
+    ];
     for (let j = 1; j < per; j++) {
       const u = j / per;
       out.push([b[0] + (na[0] - b[0]) * u, b[1] + (na[1] - b[1]) * u]);
@@ -73,9 +94,15 @@ function polygonOutline(sides: number, round: number): Array<[number, number]> {
 }
 
 /** r(θ) at uniform angles for a star-shaped outline, by linear interpolation in polar space. */
-function polarResample(outline: Array<[number, number]>, count: number): number[] {
+function polarResample(outline: [number, number][], count: number): number[] {
   const polar = outline
-    .map(([x, y]) => [((Math.atan2(y, x) % TAU) + TAU) % TAU, Math.hypot(x, y)] as [number, number])
+    .map(
+      ([x, y]) =>
+        [((Math.atan2(y, x) % TAU) + TAU) % TAU, Math.hypot(x, y)] as [
+          number,
+          number,
+        ],
+    )
     .sort((p, q) => p[0] - q[0]);
   const m = polar.length;
   const out: number[] = [];
@@ -101,7 +128,8 @@ export function shapeRadii(params: Partial<ShapeParams>): number[] {
   const p: ShapeParams = { ...SHAPE_DEFAULTS, ...params };
   const N = SHAPE_SAMPLES;
   const rotRad = (p.rot * Math.PI) / 180;
-  const poly = p.sides > 0 ? polarResample(polygonOutline(p.sides, p.round), N) : null;
+  const poly =
+    p.sides > 0 ? polarResample(polygonOutline(p.sides, p.round), N) : null;
   const radii: number[] = [];
   for (let i = 0; i < N; i++) {
     const t = (i / N) * TAU;
@@ -125,7 +153,11 @@ export function shapeRadii(params: Partial<ShapeParams>): number[] {
   let ext = 0;
   for (let i = 0; i < N; i++) {
     const t = (i / N) * TAU;
-    ext = Math.max(ext, Math.abs(radii[i] * Math.cos(t)), Math.abs(radii[i] * Math.sin(t)));
+    ext = Math.max(
+      ext,
+      Math.abs(radii[i] * Math.cos(t)),
+      Math.abs(radii[i] * Math.sin(t)),
+    );
   }
   const s = BODY_RADIUS / ext;
   for (let i = 0; i < N; i++) radii[i] *= s;
@@ -152,7 +184,12 @@ export function inscribedRadius(radii: number[]): number {
 
 /** SVG path data for an outline. */
 export function pointsToPathD(points: number[]): string {
-  let d = '';
-  for (let i = 0; i < points.length; i += 2) d += (i === 0 ? 'M' : 'L') + points[i].toFixed(2) + ' ' + points[i + 1].toFixed(2);
-  return d + 'Z';
+  let d = "";
+  for (let i = 0; i < points.length; i += 2)
+    d +=
+      (i === 0 ? "M" : "L") +
+      points[i].toFixed(2) +
+      " " +
+      points[i + 1].toFixed(2);
+  return d + "Z";
 }

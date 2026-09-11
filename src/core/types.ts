@@ -1,19 +1,20 @@
-import type { ShapeParams } from './shape';
+import type { ShapeParams } from "./shape";
 
 /** Surface silhouette of the avatar. */
-export type Cut = 'circle' | 'squircle' | 'square' | 'diamond' | 'hexagon' | 'badge' | 'burst';
+export type Cut =
+  "circle" | "squircle" | "square" | "diamond" | "hexagon" | "badge" | "burst";
 
 /** Animation state. Each mood is a seamless loop. */
 export type Mood =
-  | 'idle'
-  | 'observing'
-  | 'thinking'
-  | 'processing'
-  | 'working'
-  | 'done'
-  | 'failed'
-  | 'invalid'
-  | 'inactive';
+  | "idle"
+  | "observing"
+  | "thinking"
+  | "processing"
+  | "working"
+  | "done"
+  | "failed"
+  | "invalid"
+  | "inactive";
 
 /**
  * How the light moves, as three numbers in 0..2π so `randomSeed()` can draw them uniformly:

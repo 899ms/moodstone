@@ -1,9 +1,10 @@
-import type { AvatarSpec, Cut } from './types';
-import { clamp } from './math';
-import { inscribedRadius, radiiToPoints, shapeRadii } from './shape';
-import type { ShapeParams } from './shape';
+import { clamp } from "./math";
+import { inscribedRadius, radiiToPoints, shapeRadii } from "./shape";
 
-export { BOX, CENTER } from './box';
+import type { ShapeParams } from "./shape";
+import type { AvatarSpec, Cut } from "./types";
+
+export { BOX, CENTER } from "./box";
 
 /** A silhouette preset. */
 export interface CutDef {
@@ -28,17 +29,22 @@ function contentScaleOf(radii: number[]): number {
 
 function makeCut(label: string, shape: Partial<ShapeParams>): CutDef {
   const radii = shapeRadii(shape);
-  return { label, shape, points: radiiToPoints(radii), contentScale: contentScaleOf(radii) };
+  return {
+    label,
+    shape,
+    points: radiiToPoints(radii),
+    contentScale: contentScaleOf(radii),
+  };
 }
 
 export const CUTS: Record<Cut, CutDef> = {
-  circle: makeCut('Circle', { n: 2 }),
-  squircle: makeCut('Squircle', { n: 4.5 }),
-  square: makeCut('Square', { n: 9 }),
-  diamond: makeCut('Diamond', { n: 4.5, rot: 45 }),
-  hexagon: makeCut('Hexagon', { sides: 6, round: 0.3, rot: -90 }),
-  badge: makeCut('Badge', { n: 2.4, lobes: 8, depth: 0.07, sharp: 0.8 }),
-  burst: makeCut('Burst', { n: 2, lobes: 12, depth: 0.11, sharp: 1.6 }),
+  circle: makeCut("Circle", { n: 2 }),
+  squircle: makeCut("Squircle", { n: 4.5 }),
+  square: makeCut("Square", { n: 9 }),
+  diamond: makeCut("Diamond", { n: 4.5, rot: 45 }),
+  hexagon: makeCut("Hexagon", { sides: 6, round: 0.3, rot: -90 }),
+  badge: makeCut("Badge", { n: 2.4, lobes: 8, depth: 0.07, sharp: 0.8 }),
+  burst: makeCut("Burst", { n: 2, lobes: 12, depth: 0.11, sharp: 1.6 }),
 };
 
 /** Cut names in display order. */
@@ -49,13 +55,13 @@ export const CUT_KEYS: readonly Cut[] = Object.keys(CUTS) as Cut[];
  * visibly change the cut are listed (rotating a circle does nothing).
  */
 export const CUT_TUNES = {
-  circle: ['n', 'ax'],
-  squircle: ['n', 'rot', 'ax'],
-  square: ['n', 'rot', 'ax'],
-  diamond: ['n', 'rot', 'ax'],
-  hexagon: ['sides', 'round', 'rot'],
-  badge: ['lobes', 'depth', 'sharp'],
-  burst: ['lobes', 'depth', 'sharp'],
+  circle: ["n", "ax"],
+  squircle: ["n", "rot", "ax"],
+  square: ["n", "rot", "ax"],
+  diamond: ["n", "rot", "ax"],
+  hexagon: ["sides", "round", "rot"],
+  badge: ["lobes", "depth", "sharp"],
+  burst: ["lobes", "depth", "sharp"],
 } as const satisfies Record<Cut, readonly (keyof ShapeParams)[]>;
 
 /** A shape parameter that cut `C` exposes. */
@@ -75,7 +81,10 @@ export type CutTune = {
 }[Cut];
 
 /** A cut's preset with `tune` applied. Keys the cut doesn't expose are ignored, matching the type. */
-export function tunedShape<C extends Cut>(cut: C, tune: Tune<C>): Partial<ShapeParams>;
+export function tunedShape<C extends Cut>(
+  cut: C,
+  tune: Tune<C>,
+): Partial<ShapeParams>;
 export function tunedShape(cut: Cut, tune: Tune): Partial<ShapeParams> {
   const shape: Partial<ShapeParams> = { ...CUTS[cut].shape };
   for (const k of CUT_TUNES[cut]) {
@@ -100,13 +109,15 @@ export function resolveSpec(spec: AvatarSpec): AvatarSpec {
 }
 
 /** Outline points for a spec: its custom shape when set, else its cut. Plain JS, not for worklets. */
-export function specPoints(spec: Pick<AvatarSpec, 'cut' | 'shape'>): number[] {
-  return spec.shape ? radiiToPoints(shapeRadii(spec.shape)) : CUTS[spec.cut].points;
+export function specPoints(spec: Pick<AvatarSpec, "cut" | "shape">): number[] {
+  return spec.shape
+    ? radiiToPoints(shapeRadii(spec.shape))
+    : CUTS[spec.cut].points;
 }
 
 /** A stable key for a spec's silhouette, for caches. */
-export function specShapeKey(spec: Pick<AvatarSpec, 'cut' | 'shape'>): string {
-  return spec.shape ? 'shape:' + JSON.stringify(spec.shape) : 'cut:' + spec.cut;
+export function specShapeKey(spec: Pick<AvatarSpec, "cut" | "shape">): string {
+  return spec.shape ? "shape:" + JSON.stringify(spec.shape) : "cut:" + spec.cut;
 }
 
 /** Radius of the light source's orbit around the centre, in box units, before the seed scales it. */

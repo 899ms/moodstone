@@ -1,5 +1,6 @@
-import { TAU } from './math';
-import type { Seed } from './types';
+import { TAU } from "./math";
+
+import type { Seed } from "./types";
 
 /** Light starts top-left and drifts clockwise on a mid-size orbit. */
 export const DEFAULT_SEED: Seed = [TAU * 0.625, TAU * 0.25, TAU * 0.5];

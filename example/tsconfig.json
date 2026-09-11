@@ -3,12 +3,8 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "moodstone": [
-        "../src/index.ts"
-      ],
-      "moodstone/core": [
-        "../src/core/index.ts"
-      ]
+      "moodstone": ["../src/index.ts"],
+      "moodstone/core": ["../src/core/index.ts"]
     }
   }
 }

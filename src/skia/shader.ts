@@ -1,7 +1,9 @@
-import { Skia } from '@shopify/react-native-skia';
-import type { SkRuntimeEffect, SkShader } from '@shopify/react-native-skia';
-import { GRAIN, LIGHT_REACH, rgb01 } from '../core';
-import type { Frame } from '../core';
+import { Skia } from "@shopify/react-native-skia";
+
+import { GRAIN, LIGHT_REACH, rgb01 } from "../core";
+
+import type { Frame } from "../core";
+import type { SkRuntimeEffect, SkShader } from "@shopify/react-native-skia";
 
 /**
  * Surface shader, in box coordinates (0..64). A radial two-hue gradient
@@ -41,7 +43,8 @@ let effect: SkRuntimeEffect | null = null;
 export function surfaceEffect(): SkRuntimeEffect {
   if (!effect) {
     effect = Skia.RuntimeEffect.Make(SURFACE_SKSL);
-    if (!effect) throw new Error('moodstone: the surface shader failed to compile');
+    if (!effect)
+      throw new Error("moodstone: the surface shader failed to compile");
   }
   return effect;
 }
@@ -58,7 +61,7 @@ export interface SurfaceUniforms {
 
 /** Uniforms for a frame. `px` is device pixels per box unit, which sizes the grain. */
 export function surfaceUniforms(frame: Frame, px: number): SurfaceUniforms {
-  'worklet';
+  "worklet";
   return {
     light: [frame.light[0], frame.light[1]],
     lit: rgb01(frame.lit),
@@ -72,5 +75,12 @@ export function surfaceUniforms(frame: Frame, px: number): SurfaceUniforms {
 /** Same uniforms flattened in declaration order, for `makeShader`. */
 export function makeSurfaceShader(frame: Frame, px: number): SkShader {
   const u = surfaceUniforms(frame, px);
-  return surfaceEffect().makeShader([...u.light, ...u.lit, ...u.shade, u.reach, u.grain, u.px]);
+  return surfaceEffect().makeShader([
+    ...u.light,
+    ...u.lit,
+    ...u.shade,
+    u.reach,
+    u.grain,
+    u.px,
+  ]);
 }

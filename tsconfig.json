@@ -4,10 +4,7 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    "lib": [
-      "esnext",
-      "dom"
-    ],
+    "lib": ["esnext", "dom"],
     "strict": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
@@ -19,23 +16,11 @@
     "rootDir": ".",
     "types": [],
     "paths": {
-      "moodstone": [
-        "./src/index"
-      ],
-      "moodstone/core": [
-        "./src/core/index"
-      ]
+      "moodstone": ["./src/index"],
+      "moodstone/core": ["./src/core/index"]
     },
-    "customConditions": [
-      "source"
-    ]
+    "customConditions": ["source"]
   },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "node_modules",
-    "lib",
-    "example"
-  ]
+  "include": ["src"],
+  "exclude": ["node_modules", "lib", "example"]
 }

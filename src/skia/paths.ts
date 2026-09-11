@@ -1,7 +1,9 @@
-import { Skia } from '@shopify/react-native-skia';
-import type { SkPath, SkPoint } from '@shopify/react-native-skia';
-import { CUTS, specPoints } from '../core';
-import type { AvatarSpec, Cut } from '../core';
+import { Skia } from "@shopify/react-native-skia";
+
+import { CUTS, specPoints } from "../core";
+
+import type { AvatarSpec, Cut } from "../core";
+import type { SkPath, SkPoint } from "@shopify/react-native-skia";
 
 /** Closed polyline path from flat [x, y, …] points. Every outline has the same segment count, so they interpolate. */
 export function outlinePath(points: number[]): SkPath {
@@ -14,9 +16,10 @@ export function outlinePath(points: number[]): SkPath {
 
 /** Skia points from a flat [x0, y0, x1, y1, …] list. */
 export function toSkPoints(flat: number[]): SkPoint[] {
-  'worklet';
+  "worklet";
   const out: SkPoint[] = [];
-  for (let i = 0; i < flat.length; i += 2) out.push({ x: flat[i], y: flat[i + 1] });
+  for (let i = 0; i < flat.length; i += 2)
+    out.push({ x: flat[i], y: flat[i + 1] });
   return out;
 }
 
@@ -33,6 +36,6 @@ export function cutPath(cut: Cut): SkPath {
 }
 
 /** Silhouette path for a spec: preset cuts are cached, custom shapes are built fresh. */
-export function surfacePath(spec: Pick<AvatarSpec, 'cut' | 'shape'>): SkPath {
+export function surfacePath(spec: Pick<AvatarSpec, "cut" | "shape">): SkPath {
   return spec.shape ? outlinePath(specPoints(spec)) : cutPath(spec.cut);
 }
