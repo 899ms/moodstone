@@ -188,7 +188,7 @@ function Studio() {
         />
       </View>
       <Text style={[styles.sub, { color: c.muted }]}>
-        {moodInfo.label} · {moodInfo.hint} · {paused ? 'paused' : 'looping'}
+        {moodInfo.label} · {paused ? 'paused' : 'looping'}
       </Text>
 
       {/* controls */}
