@@ -1,5 +1,8 @@
 # Moodstone
 
+[![npm version](https://img.shields.io/npm/v/moodstone)](https://www.npmjs.com/package/moodstone)
+[![MIT license](https://img.shields.io/npm/l/moodstone)](LICENSE)
+
 ![Dozens of Moodstone avatars in every cut, mood and palette colour](assets/cover.png)
 
 Animated, procedurally generated avatars for AI agents in React Native. Give an agent a mood and the face reacts. Rendered with [React Native Skia](https://shopify.github.io/react-native-skia/) on the UI thread.
@@ -121,7 +124,7 @@ For a tuned or custom shape, set the spec's `shape` (`tunedShape(cut, tune)` bui
 
 ### From the command line
 
-A clone of this repo exports SVG files straight from the source, with Node 22.18+ and no build:
+A clone of [the repo](https://github.com/karacca/moodstone) exports SVG files straight from the source, with Node 22.18+ and no build:
 
 ```bash
 npm run export-svg -- --mood thinking --cut hexagon --color sky
@@ -136,7 +139,7 @@ npm run export-svg -- --mood all --animated --out ~/Desktop/moodstone
 
 ## Example app
 
-`example/` is an Expo app with a one-screen Studio for trying colours, cuts, moods, eyes and tuning. `npm install` at the root sets it up, and it loads the library from `src/`, so edits show up without a build. Deep links set its state, so a script can drive it:
+[`example/`](example/) is an Expo app with a one-screen Studio for trying colours, cuts, moods, eyes and tuning. `npm install` at the root sets it up, and it loads the library from `src/`, so edits show up without a build. Deep links set its state, so a script can drive it:
 
 ```bash
 cd example && npx expo start --ios
@@ -160,4 +163,4 @@ The single-colour agent face whose personality lives in two eyes comes from Plan
 
 ## License
 
-MIT
+[MIT](LICENSE)
