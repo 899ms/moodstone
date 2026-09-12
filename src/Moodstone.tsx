@@ -8,7 +8,7 @@ import {
   Shader,
 } from "@shopify/react-native-skia";
 import { useEffect, useImperativeHandle, useMemo, useRef } from "react";
-import { PixelRatio } from "react-native";
+import { PixelRatio, StyleSheet } from "react-native";
 import {
   Easing,
   useDerivedValue,
@@ -272,8 +272,13 @@ function Scene({ frame, surface, eyeColor, size, style }: SceneProps) {
     () => surfaceUniforms(frame.value, px),
     [px],
   );
+  // One flat style, not an array: on web, Skia spreads the canvas style into a CSS object, which an array would break.
+  const canvasStyle = StyleSheet.flatten([
+    { width: size, height: size },
+    style,
+  ]);
   return (
-    <Canvas style={[{ width: size, height: size }, style]}>
+    <Canvas style={canvasStyle}>
       <Group transform={scale}>
         <Group origin={ORIGIN} transform={body}>
           <Path path={surface}>
