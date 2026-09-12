@@ -22,7 +22,13 @@ import {
   type Tune,
   type TuneKey,
 } from "moodstone";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Linking,
   Pressable,
@@ -71,9 +77,13 @@ const KNOBS: Record<TuneKey, Knob> = {
 };
 const TUNE_KEYS = Object.keys(KNOBS) as TuneKey[];
 
-/** Query params from `exp://host:port/--/?mood=done&cut=burst` so the app can be driven from a script. */
-function useDeepLinkParams(): Record<string, string> {
-  const [params, setParams] = useState<Record<string, string>>({});
+/**
+ * Calls `onParams` with the query params of each deep link, like `exp://host:port/--/?mood=done&cut=burst`, so the app
+ * can be driven from a script: first the link that opened the app, then each one opened while it runs.
+ */
+function useDeepLinkParams(onParams: (params: Record<string, string>) => void) {
+  // An effect event, so one subscription lasts the app's lifetime while `onParams` still sees the latest render.
+  const handle = useEffectEvent(onParams);
   useEffect(() => {
     const apply = (url: string | null) => {
       if (!url) return;
@@ -84,14 +94,12 @@ function useDeepLinkParams(): Record<string, string> {
         const [k, v] = kv.split("=");
         if (k) out[decodeURIComponent(k)] = decodeURIComponent(v ?? "");
       }
-      out._t = String(Date.now());
-      setParams(out);
+      handle(out);
     };
     Linking.getInitialURL().then(apply);
     const sub = Linking.addEventListener("url", (e) => apply(e.url));
     return () => sub.remove();
   }, []);
-  return params;
 }
 
 /* ---------- app ---------- */
@@ -105,7 +113,6 @@ export default function App() {
 }
 
 function Studio() {
-  const params = useDeepLinkParams();
   const { height } = useWindowDimensions();
   // The root skips the bottom safe area and the controls pad for it instead, so they scroll under the home indicator
   // rather than being cut off above it.
@@ -146,7 +153,7 @@ function Studio() {
     setTune(null);
   };
 
-  useEffect(() => {
+  useDeepLinkParams((params) => {
     if (params.color && isPaletteKey(params.color)) setColor(params.color);
     if (params.cut && CUT_SET.has(params.cut)) chooseCut(params.cut as Cut);
     if (params.mood && MOOD_SET.has(params.mood)) setMood(params.mood as Mood);
@@ -167,7 +174,7 @@ function Studio() {
         () => scroller.current?.scrollTo({ y: 0, animated: false }),
         150,
       );
-  }, [params]);
+  });
 
   const randomise = () => {
     setSeed(randomSeed());
