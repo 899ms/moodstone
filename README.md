@@ -27,17 +27,19 @@ Needs React 19+, React Native 0.78+, Skia 2+, Reanimated 4+ and Worklets 0.7+.
 
 ## Moods
 
-| Mood         | When the agent is…                      |
-| ------------ | --------------------------------------- |
-| `idle`       | ready, waiting for input                |
-| `observing`  | reading context, awaiting a tool result |
-| `thinking`   | searching, making a short tool call     |
-| `processing` | reasoning at length                     |
-| `working`    | streaming output                        |
-| `done`       | finished successfully                   |
-| `failed`     | errored                                 |
-| `invalid`    | rejecting the input                     |
-| `inactive`   | offline or paused                       |
+Every mood works with any cut and colour; the previews mix them.
+
+| Mood         | Cut        | Color       | Preview                                                                             | When the agent is…                      |
+| ------------ | ---------- | ----------- | ----------------------------------------------------------------------------------- | --------------------------------------- |
+| `idle`       | `circle`   | `pine`      | <img src="assets/idle-circle-pine-animated.svg" width="48" alt="idle">              | ready, waiting for input                |
+| `observing`  | `squircle` | `lemon`     | <img src="assets/observing-squircle-lemon-animated.svg" width="48" alt="observing"> | reading context, awaiting a tool result |
+| `thinking`   | `hexagon`  | `rose`      | <img src="assets/thinking-hexagon-rose-animated.svg" width="48" alt="thinking">     | searching, making a short tool call     |
+| `processing` | `badge`    | `lilac`     | <img src="assets/processing-badge-lilac-animated.svg" width="48" alt="processing">  | reasoning at length                     |
+| `working`    | `square`   | `tangerine` | <img src="assets/working-square-tangerine-animated.svg" width="48" alt="working">   | streaming output                        |
+| `done`       | `burst`    | `sky`       | <img src="assets/done-burst-sky-animated.svg" width="48" alt="done">                | finished successfully                   |
+| `failed`     | `diamond`  | `cherry`    | <img src="assets/failed-diamond-cherry-animated.svg" width="48" alt="failed">       | errored                                 |
+| `invalid`    | `hexagon`  | `plum`      | <img src="assets/invalid-hexagon-plum-animated.svg" width="48" alt="invalid">       | rejecting the input                     |
+| `inactive`   | `squircle` | `mint`      | <img src="assets/inactive-squircle-mint-animated.svg" width="48" alt="inactive">    | offline or paused                       |
 
 ## Props
 
@@ -126,7 +128,7 @@ npm run export-svg -- --mood thinking --cut hexagon --color sky
 npm run export-svg -- --mood all --animated --out ~/Desktop/moodstone
 ```
 
-`--help` lists every flag. [`avatars/`](avatars/) holds a still and an animated loop for every mood, cut and colour; `npm run avatars` regenerates it.
+`--help` lists every flag. Without `--out`, files go to `./avatars/`. `npm run avatars` regenerates the previews this README shows, in [`assets/`](assets/).
 
 ## Core and Skia layer
 

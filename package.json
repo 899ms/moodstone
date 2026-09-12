@@ -28,9 +28,7 @@
     "prepack": "bob build",
     "example": "npm run start --workspace example",
     "export-svg": "node --import ./scripts/ts-resolve.mjs scripts/export-svg.ts",
-    "avatars": "rm -rf avatars && npm run avatars:still && npm run avatars:animated",
-    "avatars:still": "npm run export-svg -- --mood all --cut all --color all",
-    "avatars:animated": "npm run export-svg -- --mood all --cut all --color all --animated",
+    "avatars": "node --import ./scripts/ts-resolve.mjs scripts/avatars.ts",
     "check": "eslint . --max-warnings 0 && prettier --check . && tsc --noEmit && tsc --noEmit -p scripts",
     "format": "prettier --write . && eslint . --fix"
   },
