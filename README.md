@@ -1,4 +1,4 @@
-# moodstone
+# Moodstone
 
 Animated, procedurally generated avatars for AI agents in React Native. Give an agent a mood and the face reacts. Rendered with [React Native Skia](https://shopify.github.io/react-native-skia/) on the UI thread.
 
