@@ -42,6 +42,7 @@
     "animation",
     "procedural"
   ],
+  "homepage": "https://moodstone.expo.app",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/karacca/moodstone.git"

@@ -7,6 +7,8 @@
 
 Animated, procedurally generated avatars for AI agents in React Native. Give an agent a mood and the face reacts. Rendered with [React Native Skia](https://shopify.github.io/react-native-skia/) on the UI thread.
 
+Try every mood, cut and colour in the browser at [moodstone.expo.app](https://moodstone.expo.app).
+
 ```tsx
 import { Moodstone } from "moodstone";
 
@@ -148,7 +150,7 @@ xcrun simctl openurl booted "exp://<host>:8081/--/?mood=failed&cut=burst&lobes=9
 
 Parameters: `color`, `cut`, `mood`, `motion` (`animated` or `still`), `eyes`, `theme`, `scroll` (`top` or `end`) and any tunable parameter.
 
-It also runs in a browser, where Skia draws through CanvasKit (WebAssembly) instead of natively. The same parameters go in the page's query string:
+It also runs in a browser, where Skia draws through CanvasKit (WebAssembly) instead of natively. A build is live at [moodstone.expo.app](https://moodstone.expo.app), and the same parameters go in its query string, like [`?mood=failed&cut=burst&lobes=9`](https://moodstone.expo.app/?mood=failed&cut=burst&lobes=9). To run it locally:
 
 ```bash
 cd example && npm run web
