@@ -108,6 +108,17 @@ const loop = renderAnimatedAvatarSvg(spec, {
 
 `stillFrame(spec)` is the frame a still `Moodstone` shows; pass `computeFrame(spec, t)` for any other moment. The animated SVG uses SMIL, samples every attribute from `computeFrame`, and loops seamlessly. GIF and WebM encoders are not bundled; `computeFrame` plus `renderAvatarImage` give you every frame if you want to encode one natively.
 
+### From the command line
+
+A clone of this repo can also write these SVGs to files, straight from the library source, with no app and no build step. It needs Node 22.18 or later.
+
+```bash
+npm run export-svg -- --mood thinking --cut hexagon --color sky
+npm run export-svg -- --mood all --animated --out ~/Desktop/moodstone
+```
+
+The flags follow the example app's deep-link parameters: `--color` (a palette key or hex), `--cut`, `--mood`, `--eyes` (`white`, `black` or hex) and any tunable parameter (`--lobes 9`, `--sides 5`), which applies when the cut exposes it. Stills show the mood's key pose; `--animated` exports the whole loop instead. `--phase`, `--seed` (three numbers or `random`), `--size`, `--background` and `--fps` mirror the props and options above. `--color`, `--cut` and `--mood` also take a comma-separated list or `all`, and every combination is exported, named like `thinking-hexagon-sky.svg`. Files go to `./avatars/` in the directory you run the command from, unless `--out` names another directory or a single `.svg` file. Quote hex colours (`'#1f8a70'`) or leave off the `#`. `--help` lists every option.
+
 ## Mapping agent state to moods
 
 | Agent is…                               | Mood         |
@@ -175,6 +186,7 @@ npm run check      # ESLint, Prettier and tsc
 npm run format     # Prettier, then ESLint --fix
 npm run typecheck  # tsc only
 npm run build      # bob → lib/
+npm run export-svg # avatars as SVG files, --help for the flags
 ```
 
 ## Credits & inspirations

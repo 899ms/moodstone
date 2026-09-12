@@ -23,11 +23,12 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
     "build": "bob build",
     "prepack": "bob build",
     "example": "npm run start --workspace example",
-    "check": "eslint . --max-warnings 0 && prettier --check . && tsc --noEmit",
+    "export-svg": "node --import ./scripts/ts-resolve.mjs scripts/export-svg.ts",
+    "check": "eslint . --max-warnings 0 && prettier --check . && tsc --noEmit && tsc --noEmit -p scripts",
     "format": "prettier --write . && eslint . --fix"
   },
   "keywords": [
