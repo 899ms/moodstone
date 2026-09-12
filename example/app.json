@@ -21,9 +21,7 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.karacca.example"
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
+    "platforms": ["ios", "android"],
     "plugins": [
       [
         "expo-splash-screen",
