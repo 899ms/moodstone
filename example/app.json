@@ -34,6 +34,12 @@
           "backgroundColor": "#0B0E10"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9c0fb385-c269-4699-9b5e-db1c67d3b935"
+      }
+    },
+    "owner": "karacca"
   }
 }
