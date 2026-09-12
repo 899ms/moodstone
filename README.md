@@ -119,7 +119,9 @@ npm run export-svg -- --mood thinking --cut hexagon --color sky
 npm run export-svg -- --mood all --animated --out ~/Desktop/moodstone
 ```
 
-The flags follow the example app's deep-link parameters: `--color` (a palette key or hex), `--cut`, `--mood`, `--eyes` (`white`, `black` or hex) and any tunable parameter (`--lobes 9`, `--sides 5`), which applies when the cut exposes it. Stills show the mood's key pose; `--animated` exports the whole loop instead. `--phase`, `--seed` (three numbers or `random`), `--size`, `--background` and `--fps` mirror the props and options above. `--color`, `--cut` and `--mood` also take a comma-separated list or `all`, and every combination is exported, named like `thinking-hexagon-sky.svg`. Files go to `./avatars/` in the directory you run the command from, unless `--out` names another directory or a single `.svg` file. Quote hex colours (`'#1f8a70'`) or leave off the `#`. `--help` lists every option.
+The flags follow the example app's deep-link parameters: `--color` (a palette key or hex), `--cut`, `--mood`, `--eyes` (`white`, `black` or hex) and any tunable parameter (`--lobes 9`, `--sides 5`), which applies when the cut exposes it. Stills show the mood's key pose; `--animated` exports the whole loop instead. `--phase`, `--seed` (three numbers or `random`), `--size`, `--background` and `--fps` mirror the props and options above. `--color`, `--cut` and `--mood` also take a comma-separated list or `all`, and every combination is exported, named like `thinking-hexagon-sky-still.svg`, or `thinking-hexagon-sky-animated.svg` with `--animated`. Files go to `./avatars/` in the directory you run the command from, unless `--out` names another directory or a single `.svg` file. Quote hex colours (`'#1f8a70'`) or leave off the `#`. `--help` lists every option.
+
+The repo keeps every avatar in [`avatars/`](avatars/), a still and an animated loop for each mood, cut and palette colour. `npm run avatars` deletes the folder and exports it again, so run it after changing how the avatars look. `npm run avatars:still` and `npm run avatars:animated` write one half without clearing the folder.
 
 ## Mapping agent state to moods
 
@@ -189,6 +191,7 @@ npm run format     # Prettier, then ESLint --fix
 npm run typecheck  # tsc only
 npm run build      # bob → lib/
 npm run export-svg # avatars as SVG files, --help for the flags
+npm run avatars    # regenerate avatars/ from scratch
 ```
 
 ## Credits & inspirations

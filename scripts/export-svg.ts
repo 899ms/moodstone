@@ -192,7 +192,7 @@ for (const color of colors)
               : computeFrame(spec, phase * loopLength(mood)),
             { size, background },
           );
-      const name = `${mood}-${cut}-${color.replace("#", "").toLowerCase()}${args.animated ? "-animated" : ""}.svg`;
+      const name = `${mood}-${cut}-${color.replace("#", "").toLowerCase()}-${args.animated ? "animated" : "still"}.svg`;
       const file = toFile ? out : join(out, name);
       writeFileSync(file, svg);
       const shown = relative(cwd, file);
