@@ -8,6 +8,9 @@ node_modules/
 dist/
 expo-env.d.ts
 
+# Skia web: copied from canvaskit-wasm by setup-skia-web
+/public/canvaskit.wasm
+
 # Native
 .kotlin/
 *.orig.*

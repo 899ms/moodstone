@@ -148,6 +148,15 @@ xcrun simctl openurl booted "exp://<host>:8081/--/?mood=failed&cut=burst&lobes=9
 
 Parameters: `color`, `cut`, `mood`, `motion` (`animated` or `still`), `eyes`, `theme`, `scroll` (`top` or `end`) and any tunable parameter.
 
+It also runs in a browser, where Skia draws through CanvasKit (WebAssembly) instead of natively. The same parameters go in the page's query string:
+
+```bash
+cd example && npm run web
+open "http://localhost:8081/?mood=failed&cut=burst&lobes=9"
+```
+
+`npm run export:web` builds it as a static site in `example/dist/`.
+
 ## Development
 
 ```bash

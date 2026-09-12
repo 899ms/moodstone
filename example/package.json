@@ -1,8 +1,9 @@
 {
   "name": "example",
   "version": "1.0.0",
-  "main": "index.ts",
+  "main": "index",
   "dependencies": {
+    "@expo/metro-runtime": "~57.0.15",
     "@react-native-community/slider": "5.2.0",
     "@shopify/react-native-skia": "2.6.2",
     "expo": "~57.0.21",
@@ -12,10 +13,12 @@
     "lucide-react-native": "^1.45.0",
     "moodstone": "file:..",
     "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-native": "0.86.3",
     "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-svg": "15.15.4",
+    "react-native-web": "^0.21.2",
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
@@ -25,7 +28,9 @@
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "web": "setup-skia-web public && expo start --web",
+    "export:web": "setup-skia-web public && expo export -p web"
   },
   "private": true
 }

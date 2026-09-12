@@ -6,3 +6,4 @@ avatars/
 .DS_Store
 example/ios/
 example/android/
+example/dist/
