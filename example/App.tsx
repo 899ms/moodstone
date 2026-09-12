@@ -35,7 +35,11 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 /* ---------- knobs ---------- */
 
@@ -103,6 +107,9 @@ export default function App() {
 function Studio() {
   const params = useDeepLinkParams();
   const { height } = useWindowDimensions();
+  // The root skips the bottom safe area and the controls pad for it instead, so they scroll under the home indicator
+  // rather than being cut off above it.
+  const insets = useSafeAreaInsets();
   const maxStage = Math.max(160, Math.min(240, height - 560));
 
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -128,6 +135,10 @@ function Studio() {
   const dark = theme === "dark";
   const c = dark ? DARK : LIGHT;
   const ThemeIcon = dark ? Moon : Sun;
+  // The controls fade out as they scroll up to the stage rather than being sliced by the scroll view's top edge. The
+  // fade ends at the background colour with zero alpha, not `transparent` (black at zero alpha), so the light theme
+  // doesn't fade through grey.
+  const fade = `linear-gradient(${c.bg}, ${c.bg}00)`;
 
   // Selecting a cut returns the knobs to that preset, in the same render so the old tune never reaches the new cut.
   const chooseCut = (k: Cut) => {
@@ -177,7 +188,10 @@ function Studio() {
       : { borderColor: "transparent", backgroundColor: PALETTE[k] };
 
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: c.bg }]}>
+    <SafeAreaView
+      edges={["top", "left", "right"]}
+      style={[styles.root, { backgroundColor: c.bg }]}
+    >
       <StatusBar style={dark ? "light" : "dark"} />
 
       {/* header */}
@@ -219,133 +233,144 @@ function Studio() {
       </View>
 
       {/* controls */}
-      <ScrollView
-        ref={scroller}
-        contentContainerStyle={styles.controls}
-        showsVerticalScrollIndicator={false}
-      >
-        <Section label="Mood" c={c}>
-          {MOODS.map((m) => (
-            <HapticPressable
-              key={m.key}
-              onPress={() => setMood(m.key)}
-              style={[
-                styles.chip,
-                { backgroundColor: c.chip },
-                ring(m.key === mood),
-              ]}
-            >
-              <Text style={[styles.chipText, { color: c.text }]}>
-                {m.label}
-              </Text>
-            </HapticPressable>
-          ))}
-        </Section>
-        <Section label="Motion" c={c}>
-          {(["animated", "still"] as const).map((m) => (
-            <HapticPressable
-              key={m}
-              onPress={() => setMotion(m)}
-              style={[
-                styles.chip,
-                { backgroundColor: c.chip },
-                ring(m === motion),
-              ]}
-            >
-              <Text style={[styles.chipText, { color: c.text }]}>
-                {m === "animated" ? "Animated" : "Still"}
-              </Text>
-            </HapticPressable>
-          ))}
-        </Section>
-        <Section label="Cut" c={c}>
-          {CUT_KEYS.map((k) => (
-            <HapticPressable
-              key={k}
-              onPress={() => chooseCut(k)}
-              style={[
-                styles.chip,
-                { backgroundColor: c.chip },
-                ring(k === cut),
-              ]}
-            >
-              <Text style={[styles.chipText, { color: c.text }]}>
-                {CUTS[k].label}
-              </Text>
-            </HapticPressable>
-          ))}
-        </Section>
-        <Section label="Colour" c={c}>
-          {PALETTE_KEYS.map((k) => (
-            <HapticPressable
-              key={k}
-              onPress={() => setColor(k)}
-              style={[styles.swatch, swatch(k)]}
-            >
-              <View
-                style={[styles.swatchFill, { backgroundColor: PALETTE[k] }]}
-              />
-            </HapticPressable>
-          ))}
-        </Section>
-        <Section
-          label="Tune"
-          c={c}
-          trailing={
-            <HapticPressable
-              onPress={() => setTune(null)}
-              disabled={!tune}
-              style={[
-                styles.chip,
-                styles.chipSmall,
-                { backgroundColor: c.chip, opacity: tune ? 1 : 0.35 },
-              ]}
-            >
-              <Text style={[styles.chipText, { color: c.text }]}>Reset</Text>
-            </HapticPressable>
-          }
-          column
+      <View style={styles.controlsFrame}>
+        <ScrollView
+          ref={scroller}
+          contentContainerStyle={[
+            styles.controls,
+            { paddingBottom: 40 + insets.bottom },
+          ]}
+          showsVerticalScrollIndicator={false}
         >
-          {knobs.map((k) => (
-            <View key={k.key} style={styles.knob}>
-              <Text style={[styles.knobLabel, { color: c.muted }]}>
-                {k.label}
-              </Text>
-              <Slider
-                style={styles.slider}
-                minimumValue={k.min}
-                maximumValue={k.max}
-                step={k.step}
-                value={shape[k.key]}
-                onValueChange={(v) => setTune({ ...(tune ?? {}), [k.key]: v })}
-                minimumTrackTintColor={activeColor}
-                maximumTrackTintColor={c.track}
-                thumbTintColor="#ffffff"
-              />
-              <Text style={[styles.knobValue, { color: c.text }]}>
-                {k.fmt(shape[k.key])}
-              </Text>
-            </View>
-          ))}
-        </Section>
-        <Section label="Look" c={c}>
-          {(["white", "black"] as const).map((e) => (
-            <HapticPressable
-              key={e}
-              onPress={() => setEyes(e)}
-              style={[
-                styles.chip,
-                { backgroundColor: c.chip },
-                ring(e === eyes),
-              ]}
-            >
-              <Text style={[styles.chipText, { color: c.text }]}>
-                {e === "white" ? "White eyes" : "Black eyes"}
-              </Text>
-            </HapticPressable>
-          ))}
-        </Section>
-      </ScrollView>
+          <Section label="Mood" c={c}>
+            {MOODS.map((m) => (
+              <HapticPressable
+                key={m.key}
+                onPress={() => setMood(m.key)}
+                style={[
+                  styles.chip,
+                  { backgroundColor: c.chip },
+                  ring(m.key === mood),
+                ]}
+              >
+                <Text style={[styles.chipText, { color: c.text }]}>
+                  {m.label}
+                </Text>
+              </HapticPressable>
+            ))}
+          </Section>
+          <Section label="Motion" c={c}>
+            {(["animated", "still"] as const).map((m) => (
+              <HapticPressable
+                key={m}
+                onPress={() => setMotion(m)}
+                style={[
+                  styles.chip,
+                  { backgroundColor: c.chip },
+                  ring(m === motion),
+                ]}
+              >
+                <Text style={[styles.chipText, { color: c.text }]}>
+                  {m === "animated" ? "Animated" : "Still"}
+                </Text>
+              </HapticPressable>
+            ))}
+          </Section>
+          <Section label="Cut" c={c}>
+            {CUT_KEYS.map((k) => (
+              <HapticPressable
+                key={k}
+                onPress={() => chooseCut(k)}
+                style={[
+                  styles.chip,
+                  { backgroundColor: c.chip },
+                  ring(k === cut),
+                ]}
+              >
+                <Text style={[styles.chipText, { color: c.text }]}>
+                  {CUTS[k].label}
+                </Text>
+              </HapticPressable>
+            ))}
+          </Section>
+          <Section label="Colour" c={c}>
+            {PALETTE_KEYS.map((k) => (
+              <HapticPressable
+                key={k}
+                onPress={() => setColor(k)}
+                style={[styles.swatch, swatch(k)]}
+              >
+                <View
+                  style={[styles.swatchFill, { backgroundColor: PALETTE[k] }]}
+                />
+              </HapticPressable>
+            ))}
+          </Section>
+          <Section
+            label="Tune"
+            c={c}
+            trailing={
+              <HapticPressable
+                onPress={() => setTune(null)}
+                disabled={!tune}
+                style={[
+                  styles.chip,
+                  styles.chipSmall,
+                  { backgroundColor: c.chip, opacity: tune ? 1 : 0.35 },
+                ]}
+              >
+                <Text style={[styles.chipText, { color: c.text }]}>Reset</Text>
+              </HapticPressable>
+            }
+            column
+          >
+            {knobs.map((k) => (
+              <View key={k.key} style={styles.knob}>
+                <Text style={[styles.knobLabel, { color: c.muted }]}>
+                  {k.label}
+                </Text>
+                <Slider
+                  style={styles.slider}
+                  minimumValue={k.min}
+                  maximumValue={k.max}
+                  step={k.step}
+                  value={shape[k.key]}
+                  onValueChange={(v) =>
+                    setTune({ ...(tune ?? {}), [k.key]: v })
+                  }
+                  minimumTrackTintColor={activeColor}
+                  maximumTrackTintColor={c.track}
+                  thumbTintColor="#ffffff"
+                />
+                <Text style={[styles.knobValue, { color: c.text }]}>
+                  {k.fmt(shape[k.key])}
+                </Text>
+              </View>
+            ))}
+          </Section>
+          <Section label="Look" c={c}>
+            {(["white", "black"] as const).map((e) => (
+              <HapticPressable
+                key={e}
+                onPress={() => setEyes(e)}
+                style={[
+                  styles.chip,
+                  { backgroundColor: c.chip },
+                  ring(e === eyes),
+                ]}
+              >
+                <Text style={[styles.chipText, { color: c.text }]}>
+                  {e === "white" ? "White eyes" : "Black eyes"}
+                </Text>
+              </HapticPressable>
+            ))}
+          </Section>
+        </ScrollView>
+        <View
+          pointerEvents="none"
+          style={[styles.fade, { experimental_backgroundImage: fade }]}
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -434,9 +459,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 6,
-    marginBottom: 8,
   },
-  controls: { paddingTop: 14, paddingBottom: 40, gap: 22 },
+  controlsFrame: { flex: 1 },
+  controls: { paddingTop: 22, gap: 22 },
+  // As tall as the controls' top padding, so the first label only reaches it once scrolled.
+  fade: { position: "absolute", top: 0, left: 0, right: 0, height: 22 },
   section: { gap: 10 },
   sectionHead: {
     flexDirection: "row",
